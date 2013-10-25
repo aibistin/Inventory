@@ -1,0 +1,83 @@
+<div class="row">
+<br>
+</div> <!--/row -->
+<div class="table-responsive panel panel-info">
+
+    <div class="panel-heading">
+      <h3 class="panel-title"> {% table_heading || 'Inventory' %} <span><small>({% print_time %})</small></span></h3>
+    </div>
+
+    <div class="panel-body">
+    <table class="table table-hover table-striped table-borderd">
+        <thead>
+          <th>
+              ID
+          </th>
+          <th>
+              Type
+          </th>
+          <th>
+              Description
+          </th>
+          <th>
+              Location
+          </th>
+          <th>
+              Length
+          </th>
+          <th>
+              Width
+          </th>
+          <th>
+              Diameter
+          </th>
+          <th>
+              Weight
+          </th>
+          <th>
+              Updated
+          </th>
+        </thead>
+        <tbody>
+        {% DEBUG on %}
+        {% DEBUG off %}
+
+        {% USE format %}
+        {% number_algn = format("%5d") %}
+        
+
+            {% FOR item IN item_list %}
+            <tr>
+                <td>
+                {% item.id %}
+                </td> 
+                <td>
+                {% camelcase_str(item.name) %}
+                </td> 
+                <td>
+                {% camelcase_str(item.extra_description) %}
+                </td> 
+                <td>
+                {% camelcase_str(item.location_desc) %}
+                </td> 
+                <td class="text-center">
+                {% number_algn(item.length) %}
+                </td>
+                <td class="text-center">
+                {% number_algn(item.width) %}
+                </td>
+                <td class="text-center">
+                {% number_algn(item.diameter) %}
+                </td>
+                <td class="text-center">
+                {% number_algn(item.weight) %}
+                </td>
+                <td>
+                {% format_yyyy_mm_dd_T_hhmmss(item.updated) %}
+                </td>
+            </tr>
+            {% END %}
+        </tbody>
+    </table>
+  </div><!-- /panel-body -->
+</div><!-- /panel /table-responsive -->

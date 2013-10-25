@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Travel Time Calculator">
+<meta name="author" content="austin kenny">
+
+<title>{% inv_title or 'Inventory'  %}</title>
+
+<!-- CDN Bootstrap CSS Use bootstrapcdn.com CDN. Use local Bootstrap (Bootstrap 3.0.0) if no CDN -->
+<link rel="stylesheet"  href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
+<!-- Local Bootstrap CSS -->
+<!-- <link rel="stylesheet" href="{% request.uri_base %}/css/bootstrap.min.css">  -->
+  <!-- My Css -->
+  <link rel="stylesheet" href="{% request.uri_base %}/css/mover.css" /> 
+
+
+ <!-- Custom styles for this template (taken from Bootstrap3 marketing example) -->
+ <link href="{% request.uri_base %}/css/justified-nav.css" rel="stylesheet">
+
+
+<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+<!-- From Bootstrap Docs -->
+<!--[if lt IE 9]>
+        <script src="../../assets/js/html5shiv.js"></script>
+        <script src="../../assets/js/respond.min.js"></script>
+<![endif]-->
+
+
+</head>
+
+<body>
+<div class="container">
+<!---------------------------------------------------------------------------->
+{% INCLUDE menu.tt %}
+  {% content %}
+<!---------------------------------------------------------------------------->
+      <!-- Site footer -->
+<div id="footer">
+    <br><br>
+    <div class="row">
+        <p>
+        &copy; CarryOnMoving 2013
+        Powered by <a href="http://perl.org/">Perl</a> 
+        ,  <a href="http://perldancer.org/">Dancer2</a> {% dancer_version %}
+        and <a
+            href="http://getbootstrap.com/getting-started/#license-faqs">Bootstrap 3.0.0</a>
+        </p>
+    </div>
+</div>
+
+
+</div> <!-- /container -->
+
+<!--              JAVASCRIPT AND JQUERY       -->
+
+<!-- Use Google CDN jQuery. If not available, use local jQuery -->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" type="text/javascript"></script>
+
+<script>
+    if (!window.jQuery) {
+        document.write('<script src="{% request.uri_base %}/js/jquery-ui-1.10.2.min.js">\x3C/script>');
+            }
+</script>
+<!-- -->
+<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js" type="text/javascript"></script>
+<script>
+    if (!window.jQuery) {
+        document.write('<script src="{% request.uri_base %}/js/jquery-ui-1.10.3.custom.min.js">\x3C/script>');
+            }
+</script>
+
+<!-- Bootstrap 3.0.0 JS -->
+<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+<script>
+    if(typeof($.fn.modal) == 'undefined' ){
+    document.write(unescape'%3Cscript src="{% request.uri_base %}/js/bootstrap.min.js"%3E%3C/script%3E');
+}
+</script>
+
+
+</body>
+</html>

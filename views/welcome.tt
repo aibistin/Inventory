@@ -1,0 +1,26 @@
+<!-- Jumbotron -->
+<div class="jumbotron">
+<h1>Where's My Stuff!</h1>
+<p class="lead">Do you know where your stuff is?</p>
+<p><a class="btn btn-lg btn-success" href="#">Get started today</a></p>
+</div>
+
+<!-- Example row of columns -->
+<div class="row">
+<div class="col-lg-4">
+    <h2>Inventory</h2>
+    <p>My Stuff</p>
+    <p><a class="btn btn-primary" href="{% request.uri_base %}/{% view_all
+    %}">{% view_all_label || 'My Stuff' %}&raquo;</a></p>
+</div>
+<div class="col-lg-4">
+    <h2>Take My Stuff</h2>
+    <p>Get Thee Hence!</p>
+    <p><a class="btn btn-primary" href="#">Schedule Pick Up&raquo;</a></p>
+</div>
+<div class="col-lg-4">
+    <h2>Get My Stuff</h2>
+    <p>Give me my Goddarned Stuff!</p>
+    <p><a class="btn btn-primary" href="#">Schedule Drop Off &raquo;</a></p>
+</div>
+</div>

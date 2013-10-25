@@ -1,0 +1,19 @@
+
+<!-- Metric/Imperial  Group -->
+  <div class="row">
+        <div class="col-lg-2">
+        <label class="col-lg-1">Metric
+            <div class="col-lg-2">
+                <input type="radio"  name="item_units"  id="item_units_metric" value="metric" checked > 
+            </div>
+        </label> 
+        </div>
+        <div class="col-lg-2">
+        <label class="col-lg-1">Imperial
+            <div class="col-lg-2">
+                <input type="radio"  name="item_units" id="item_units_imperial" value="imperial">
+            </div>
+        </label>
+     </div>
+  </div> <!-- /row -->
+

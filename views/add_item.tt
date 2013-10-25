@@ -1,0 +1,141 @@
+<br><br>
+<div class="panel panel-primary">
+ <div class="panel-heading">
+    <h6 class="panel-title">Add Item To Your Inventory</h6>
+ </div>
+ <div class="panel-body">
+  <form class="form-horizontal" role="form"  action="add_item" method="post"  >
+{% IF has_error %}
+   {% FOR err_msg IN error_messages %}
+     <p class="text-warning">{% err_msg %}</p>
+   {% END %}
+{% END %}
+<!-- Item Type Select Group -->
+  <div class="row">
+  <div class="form-group {% type_bootstrap_field_state %}">
+     <label for="{% type_name %}" class="col-lg-2 control-label">{% type_label %}</label>
+        <div class="col-lg-2">
+            <select class="form-control input-sm required"
+            name="{% type_name %}" id="{% type_name %}" >
+            <option 
+                value="{% type_default_value %}" {%
+                type_default_select_label_attr %}  >{% camelcase_str(type_default_select_label) %}
+            </option>
+            {% FOR type IN type_list %}
+                <option value="{% type.id %}" >{% camelcase_str(type.name) %}</option>
+            {% END %}
+            </select>
+        </div>
+  </div>
+  </div> <!-- /row -->
+
+
+<!-- Location Select Group -->
+  <div class="row">
+  <div class="form-group {% location_bootstrap_field_state %}">
+     <label for="{% location_name %}" class="col-lg-2 control-label">{% location_label %}</label>
+        <div class="col-lg-2">
+            <select class="form-control input-sm required"
+            name="{% location_name %}" id="{% location_name %}">
+            <option 
+                value="{% location_default_value %}" {%
+                location_default_select_label_attr %}  >{% camelcase_str(location_default_select_label) %}
+            </option>
+            {% FOR location IN location_list %}
+                <option value="{% location.id %}" {% location.attr || '' %}
+                >{% camelcase_str(location.name) %}</option>
+            {% END %}
+            </select>
+            <span class="help-block">Where it is now.</span>
+        </div>
+  </div>
+  </div> <!-- /row -->
+
+<!-- Length Select Group -->
+  <div class="row">
+  <!-- Length Width Height -->
+    <div class="form-group {% lwh_bootstrap_field_state %}">
+        <label for="{% length_name %}" class="col-lg-2 control-label">{% length_label %}</label>
+        <div class="col-lg-1">
+            <select class="form-control input-sm"
+             name="{% length_name %}" id="{% length_name %}">
+             <option value={%length_default_value%}>{% length_default_select_label %}</option>
+            {% FOR i_length IN length_list %}
+                <option>{% i_length %}</option>
+            {% END %}
+            </select>
+        </div>
+
+
+    <!-- Width Select Group -->
+        <label for="width" class="col-lg-1 control-label">{% width_label %}</label>
+        <div class="col-lg-1">
+            <select class="form-control input-sm"
+             name="{% width_name %}" id="{% width_name %}">
+             <option value={%width_default_value%}>{% width_default_select_label %}</option>
+            {% FOR i_width IN width_list %}
+                <option>{% i_width %}</option>
+            {% END %}
+            </select>
+        </div>
+
+    <!-- Height Select Group -->
+        <label for="{% height_name %}" class="col-lg-1 control-label">{% height_label %}</label>
+        <div class="col-lg-1">
+            <select class="form-control input-sm" 
+             name="{% height_name %}" id="{% height_name %}">
+             <option value={%height_default_value%}>{% height_default_select_label %}</option>
+            {% FOR i_height IN height_list %}
+                <option >{% i_height %}</option>
+            {% END %}
+            </select>
+        </div>
+        <p class="help-block">Item Dimensions.</p>
+      </div>
+  </div> <!-- /row -->
+
+
+<!-- Diameter Select Group -->
+  <div class="row">
+    <div class="form-group {% diameter_bootstrap_field_state %}">
+        <label for="{% diameter_name %}" class="col-lg-2 control-label">{% diameter_label %}</label>
+        <div class="col-lg-2">
+                    <select class="form-control input-sm" 
+                     name="{% diameter_name %}" id="{% diameter_name %}">
+                    <option value={%diameter_default_value%}>{% diameter_default_select_label %}</option>
+                    {% FOR i_diameter IN diameter_list %}
+                        <option >{% i_diameter %}</option>
+                    {% END %}
+                    </select>
+        </div>
+    </div>
+  </div> <!-- /row -->
+
+<!-- Weight Select Group -->
+  <div class="row">
+    <div class="form-group {% weight_bootstrap_field_state %}">
+        <label for="{% weight_name %}" class="col-lg-2 control-label">{% weight_label %}</label>
+        <div class="col-lg-2">
+            <select class="form-control input-sm" 
+                    name="{% weight_name %}" id="{% weight_name %}">
+                    <option value={%weight_default_value%}>{% weight_default_select_label %}</option>
+            {% FOR i_weight IN weight_list %}
+                <option >{% i_weight %}</option>
+            {% END %}
+            </select>
+        </div>
+    </div>
+  </div> <!-- /row -->
+
+
+ </div><!-- /panel-body -->
+ <div class="panel-footer">
+  <div class="row">
+        <div class="col-lg-6">
+            <button type="submit" class="btn btn-primary">Add Item</button>
+        </div>
+  </div> <!-- /row -->
+</form>
+
+ </div><!-- /panel-footer -->
+ </div><!-- /panel -->

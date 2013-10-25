@@ -1,0 +1,107 @@
+<h2>Your Inventory</h2>
+<div>
+<form class="form-horizontal" role="form">
+  <div class="form-group">
+      <label for="{% item_name %}" class="col-lg-2 control-label">{%
+      item_name_label %}</label>
+      <div class="col-lg-10">
+          <input type="text" class="form-control" id="{% item_name %}"
+          placeholder="{% item_name_label %}">
+      </div>
+  </div>
+
+  <div class="form-group">
+    <select class="form-control">
+      <!--  <option>{% name %} </option> -->
+    </select>
+  </div>
+
+  <div class="form-group">
+    <select class="form-control">
+      <!--  <option>{% location %} </option> -->
+    </select>
+  </div>
+
+  <div class="form-group">
+      <label for="{% item_color %}" class="col-lg-2 control-label">{%
+      item_color_label %}</label>
+      <div class="col-lg-10">
+          <input type="color" class="form-control" id="{% item_color %}"
+          placeholder="{% item_color_label %}">
+      </div>
+  </div>
+
+  <div class="form-group">
+      <label for="{% item_length %}" class="col-lg-2 control-label">{%
+      item_length_label %}</label>
+      <div class="col-lg-10">
+          <input type="number" class="form-control" id="{% item_length %}"
+          placeholder="{% item_length_label %}">
+      </div>
+  </div>
+
+  <div class="form-group">
+      <label for="{% item_width %}" class="col-lg-2 control-label">{%
+      item_width_label %}</label>
+      <div class="col-lg-10">
+          <input type="number" class="form-control" id="{% item_width %}"
+          placeholder="{% item_width_label %}">
+      </div>
+  </div>
+
+  <div class="form-group">
+      <label for="{% item_height %}" class="col-lg-2 control-label">{%
+      item_height_label %}</label>
+      <div class="col-lg-10">
+          <input type="number" class="form-control" id="{% item_height %}"
+          placeholder="{% item_height_label %}">
+      </div>
+  </div>
+
+  <div class="form-group">
+      <label for="{% item_diameter %}" class="col-lg-2 control-label">{%
+      item_diameter_label %}</label>
+      <div class="col-lg-10">
+          <input type="number" class="form-control" id="{% item_diameter %}"
+          placeholder="{% item_diameter_label %}">
+      </div>
+  </div>
+
+  <div class="form-group">
+      <label for="{% item_weight %}" class="col-lg-2 control-label">{%
+      item_weight_label %}</label>
+      <div class="col-lg-10">
+          <input type="number" class="form-control" id="{% item_weight %}"
+          placeholder="{% item_weight_label %}">
+      </div>
+  </div>
+
+
+  <div class="form-group">
+      <div class="col-lg-offset-2 col-lg-10">
+            <div class="radio">
+                <label> 
+                    <input type="radio" class="form-control"
+                        name="{% item_units %}"  id="{% item_units_1 %}"
+                        value='metric' checked > Metric 
+                </label>
+            </div>
+            <div class="radio">
+                <label>
+                    <input type="radio" class="form-control" 
+                    name="{% item_units %}" id="{% item_units_2 %}"
+                   value='imperial' 
+                    > Imperial </label>
+            </div>
+      </div>
+  </div>
+
+
+  <div class="form-group">
+      <div class="col-lg-offset-2 col-lg-10">
+          <button type="submit" class="btn btn-default">Add Item</button>
+      </div>
+  </div>
+</form>
+
+</div>
