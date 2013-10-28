@@ -1,0 +1,48 @@
+<br><br>
+
+<div class="panel panel-primary">
+ <div class="panel-heading">
+    <h6 class="panel-title {% type.bootstrap_validation_state %}"> You
+    successfully added the {% new_item.item_name %}  to the database!
+    </h6>
+ </div>
+ <div class="panel-body">
+    <p class="text-info">Item Details:</p> 
+    
+    <dl class="dl-horizontal text-success">
+        <dt>Item Type</dt> 
+          <dd> {% camelcase_str(new_item.item_name) %}</dd>
+        <dt>Item Id</dt> 
+          <dd> {% new_item.id %}</dd>
+        <dt>Located at</dt> 
+          <dd> {% camelcase_str(new_item.location_name) %}</dd>
+
+        <dt>Dimensions</dt>
+           {% IF new_item.diameter %}
+             <dd><strong>Diameter:</strong> {% new_item.diameter %} <strong>Depth:</strong> {% new_item.height %} </dd>
+           {% ELSE %}
+             <dd><strong>L:</strong> {% new_item.length %}  <strong>W:</strong> {%
+             new_item.width %} <strong>H:</strong> {% new_item.height %} </dd>
+           {% END %}
+            
+        <dt>Weight</dt> 
+          <dd>{% new_item.weight %} </dd>
+        <dt>External Ref</dt> 
+          <dd>{% new_item.external_ref %} </dd>
+        <dt>Comments</dt> 
+          <dd> {% new_item.comments %} </dd>
+        <dt>Added On</dt> 
+          <dd>{% format_yyyy_mm_dd_T_hhmmss( new_item.updated) %} </dd>
+    </dl>
+    <p class="text-primary"> Would you like to add another? </p>
+ </div><!-- /panel-body -->
+
+ <div class="panel-footer">
+    <div class="row">
+        <div class="col-lg-6">
+            <a class="btn btn-primary btn-lg btn-block" href="{% request.uri_base %}/{% add_item_route %}">Add Another Item</a>
+        </div>
+    </div> <!-- /row -->
+
+ </div><!-- /panel-footer -->
+ </div><!-- /panel -->

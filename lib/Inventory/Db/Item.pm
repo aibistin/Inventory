@@ -27,6 +27,10 @@ use Log::Any qw($log);
 my @ITEM_TABLE_COLS =
   qw{id type location length width height diameter weight external_ref comments updated};
 
+my $ITEM_TABLE = q{item};
+my $DB_CATALOG = q{undef};
+my $DB_SCHEMA  = q{undef};
+my $ID_NAME    = q{id};
 #-------------------------------------------------------------------------------
 #  Inventory Database Handle
 #-------------------------------------------------------------------------------
@@ -99,6 +103,35 @@ SELECT_SQL
 
 }
 
+
+sub select_one_item_detail_sql {
+    my $self = shift;
+
+    my $sql = <<"SELECT_SQL";
+   SELECT item.id, 
+          item_type.name as item_name, 
+          location.name as location_name, 
+          item.length,
+          item.width, 
+          item.height, 
+          item.diameter, 
+          item.weight, 
+          item.external_ref, 
+          item.comments, 
+          item.updated 
+    FROM item
+    INNER JOIN item_type
+        ON item.type = item_type.id
+    INNER JOIN location
+        ON item.location = location.id
+    WHERE
+        item.id = ?
+SELECT_SQL
+
+    return $sql;
+
+}
+
 #-------------------------------------------------------------------------------
 sub select_items_where_type_sql {
     my $self = shift;
@@ -120,6 +153,67 @@ sub select_items_where_type_sql {
 SELECT_SQL
 
     return $sql;
+}
+
+#-------------------------------------------------------------------------------
+#  Select Items
+#-------------------------------------------------------------------------------
+
+=head2 select_all_items_detail
+  Returns an ArrayRef of Item Hash's
+  Can send a HashRef of Column params if you only want particular columns.
+  select_all_items_detail({id =>1, name => 1})
+=cut
+
+sub select_all_items_detail {
+    my $self = shift;
+    my $column_params = shift || {};
+    croak('column_params must be a HashRef!')
+      if ( ($column_params)
+        && ( ref($column_params) ne 'HASH' ) );
+    my $array_of_h = $self->selectall_slice(
+        {
+            sql           => $self->select_all_items_detail_sql(),
+            column_params => $column_params,
+        }
+    );
+    return $array_of_h;
+}
+
+=head2 get_all_items_formatted
+   Get all items from Inventory DB. Do Some formatting on the
+   Item Elements.
+   Return the ArrayRef of HasRefs of the Item data.
+   I Dont use this yet
+=cut
+
+sub get_all_items_formatted {
+    my $self       = shift;
+    my $array_of_h = $self->select_all_items_detail(shift);
+    my $inv_dbh    = $self->get_inv_dbh();
+    for my $item (@$array_of_h) {
+
+        #--- Format the 'updated' date
+        $item->{name} = camelcase_str( $item->{name} );
+        $item->{comments} =
+          camelcase_str( $item->{comments} );
+        $item->{updated}       = format_yyyy_mm_dd_T_hhmmss( $item->{updated} );
+    }
+    return $array_of_h;
+}
+
+
+=head2 select_one_item_detail
+  Returns an HashRef of One Item Table Row that matches a give ID.
+=cut
+
+sub select_one_item_detail {
+    my $self = shift;
+    my $id = shift;
+    my $inv_dbh = $self->get_inv_dbh();
+    my $row_href =
+    $inv_dbh->selectrow_hashref($self->select_one_item_detail_sql(), undef, ($id));
+    return $row_href;
 }
 
 #-------------------------------------------------------------------------------
@@ -191,7 +285,7 @@ sub get_select_location_sth {
 sub selectall_item_types {
     my $self          = shift;
     my $column_params = shift;
-    carp('column_params must be a HashRef!')
+    croak('column_params must be a HashRef!')
       if ( ($column_params)
         && ( ref($column_params) ne 'HASH' ) );
 
@@ -223,7 +317,7 @@ SELECT_SQL
 sub selectall_locations {
     my $self = shift;
     my $column_params = shift || {};
-    carp('column_params must be a HashRef!')
+    croak('column_params must be a HashRef!')
       if ( ($column_params)
         && ( ref($column_params) ne 'HASH' ) );
 
@@ -361,16 +455,18 @@ POPULATE_SQL
     return $inv_dbh->prepare($sql);
 }
 
-#-------------------------------------------------------------------------------
-#  Insert Item Transaction
-#  Pass a HashRef containing the Column Names and values
-#-------------------------------------------------------------------------------
+=head2
+  Insert Item Transaction
+  Pass a HashRef containing the Column Names and values
+  Return the last id to be inserted
+=cut
 sub insert_item_transaction {
     my $self        = shift;
     my $column_data = shift
       || croak('insert_item_transaction() needs some bind params!');
     croak('insert_item_transaction() bind params needs to be a HashRef!')
       unless ( ref($column_data) eq 'HASH' );
+    my ($new_id);
 
 #    $log->debug( 'Item Database Object : ' . dump $self );
 #    $log->debug( 'Autocommit : ' . $self->auto_commit );
@@ -390,20 +486,15 @@ sub insert_item_transaction {
 
     $column_data->{updated} = get_db_formatted_localtime($inv_dbh);
 
-#    $log->debug(
-#        'Insert item transaction bind Hash  : ' . dump $column_data );
     my @bind_params = @$column_data{@ITEM_TABLE_COLS};
-#    $log->debug(
-#        'Insert item transaction bind params  : ' . dump @bind_params );
-    $inv_dbh->begin_work();
-    my $ok = try {
+
+    #----- ENABLE TRANSACTION
+   $inv_dbh->{RaiseError} = 1;
+   $inv_dbh->begin_work();
+   eval {
 
         #--- Add to Item
-        $item_sth->execute(@bind_params) // do {
-            $log->error( 'Error inserting item to Db! ' . $item_sth->errstr );
-            $item_sth->finish;
-            die;
-        };
+        $item_sth->execute(@bind_params);
 
         #        #--- Add to Item Description
         #        $item_sth->execute(@$bind_params) || do {
@@ -431,26 +522,24 @@ sub insert_item_transaction {
         #            $item_photo_sth->finish;
         #            die;
         #        };
-        return $TRUE;
+
+    $inv_dbh->commit;
+    #--- Return the last id to be inserted
+     $new_id =   $inv_dbh->last_insert_id($DB_CATALOG,  $DB_SCHEMA, $ITEM_TABLE, $ID_NAME);
     };
 
-    #    catch {
-    #        $log->debug('Inside catch! ');
-    #        $inv_dbh->rollback;
-    #        $log->debug('Rollback completed! ');
-    #        $FAIL;
-    #    };
 
-    if ( not $ok ) {
-        $log->error('Insert Failed! ');
-        $inv_dbh->rollback;
-        $log->debug('Rollback completed! ');
+
+    if ( $@ ) {
+        $log->error('Insert Failed! :    ' . $@);
+        eval{$inv_dbh->rollback};
+        $log->error('Rollback failed! ') if $@;
+        $item_sth->finish;
         return $FAIL;
     }
 
 
-    #    return $FAIL unless $ok;
-    $inv_dbh->commit || die $inv_dbh->errstr;
+   return $new_id;
 }
 
 #-------------------------------------------------------------------------------
@@ -467,50 +556,6 @@ sub prepare_statement {
     return $inv_dbh->prepare( $sql, $attr );
 
 }
-
-=head2 select_all_items
-  Returns an ArrayRef of Item Hash's
-  Can send a HashRef of Column params if you only want particular columns.
-  select_all_items({id =>1, name => 1})
-=cut
-
-sub select_all_items {
-    my $self = shift;
-    my $column_params = shift || {};
-    carp('column_params must be a HashRef!')
-      if ( ($column_params)
-        && ( ref($column_params) ne 'HASH' ) );
-    my $array_of_h = $self->selectall_slice(
-        {
-            sql           => $self->select_all_items_detail_sql(),
-            column_params => $column_params,
-        }
-    );
-    return $array_of_h;
-}
-
-=head2 get_all_items_formatted
-   Get all items from Inventory DB. Do Some formatting on the
-   Item Elements.
-   Return the ArrayRef of HasRefs of the Item data.
-   I Dont use this yet
-=cut
-
-sub get_all_items_formatted {
-    my $self       = shift;
-    my $array_of_h = $self->select_all_items(shift);
-    my $inv_dbh    = $self->get_inv_dbh();
-    for my $item (@$array_of_h) {
-
-        #--- Format the 'updated' date
-        $item->{name} = camelcase_str( $item->{name} );
-        $item->{comments} =
-          camelcase_str( $item->{comments} );
-        $item->{updated}       = format_yyyy_mm_dd_T_hhmmss( $item->{updated} );
-    }
-    return $array_of_h;
-}
-
 #-------------------------------------------------------------------------------
 #  Execute the Select statement
 #  Returns the Statement handle or undef if it fails.
@@ -605,7 +650,6 @@ sub selectall_arrayref {
           or die $DBH::errstr;
     };
     $column_attr && do {
-        $log->debug( 'Column Attr Are :' . dump $column_attr );
         return $inv_dbh->selectall_arrayref( $sql, $column_attr )
           or die $DBH::errstr;
     };

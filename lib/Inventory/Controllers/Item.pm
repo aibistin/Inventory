@@ -18,7 +18,8 @@ package Inventory::Controllers::Item;
 use Dancer2;
 
 #------ PREFIX for this route.
-prefix '/item';
+my $PREFIX = q{/item};
+prefix $PREFIX;
 
 use Template;
 use Data::Dump qw/dump/;
@@ -38,9 +39,10 @@ my $ITEM_CATEGORY = qw{Furniture};
 
 #------ Inventory Db Item Module
 use Inventory::Db::Item;
+use Inventory::Form::AddItem;
 
 #--- Plain Item Module
-use Item::Item;
+#use Item::Item;
 
 #------ Debug
 use Log::Any::Adapter qw/Stdout/;
@@ -96,8 +98,9 @@ my $INCHES_LABEL = qw{Inches};
 my $POUNDS_LABEL = qw{LB's};
 
 #--- templates
-my $ADD_ITEM_T   = q/add_item/;
-my $VIEW_ITEMS_T = q/view_items/;
+my $ADD_ITEM_T         = q/add_item/;
+my $ADD_ITEM_SUCCESS_T = q/add_item_success/;
+my $VIEW_ITEMS_T       = q/view_items/;
 
 #-------------------------------------------------------------------------------
 #  Before Hook
@@ -135,7 +138,7 @@ get '/view_items' => sub {
     #------ Connect to Inventory Database
     my $DbItem = Inventory::Db::Item->new( db_name => $INVENTORY_DB );
 
-    my $items = $DbItem->select_all_items();
+    my $items = $DbItem->select_all_items_detail();
 
     #    debug("Got All Items : " . dump $items);
 
@@ -161,17 +164,18 @@ get '/view_items' => sub {
 
 get '/add_item' => sub {
     debug("\n Inside add_item");
+    my ( $types, $locations ) = get_type_and_location_lists();
 
-    #------ Get 'Select' ranges for the input values
-    my $item_data_h = get_valid_item_data_h();
+    my $AdForm = Inventory::Form::AddItem->new(
+        types     => $types,
+        locations => $locations,
+    );
 
-    #    debug( 'Got initial data (type))to pop the template: '
-    #          . dump( $item_data_h->{type} ) );
-    debug( 'Got initial data (length)to pop the template: '
-          . dump( $item_data_h->{length} ) );
-    my $template_vars_h =
-      populate_add_item_template( $item_data_h, { has_errors => $NO } );
-    template $ADD_ITEM_T, $template_vars_h;
+    my $template_vars = $AdForm->create_form_template();
+
+    debug( 'Got Template Vars For Initial form : '
+          . dump( $template_vars->{length} ) );
+    template $ADD_ITEM_T, $template_vars;
 };
 
 =head2 post add_item
@@ -182,77 +186,43 @@ post '/add_item' => sub {
 
     debug("Inside add_item POST:");
 
-    my $validation_h = get_valid_item_data_h();
-
-    #            type     => params->{$TYPE},
-    #            location => params->{$LOCATION},
-    #            length   => params->{$LENGTH},
-    #            width    => params->{$WIDTH},
-    #            height   => params->{$HEIGHT},
-    #            diameter => params->{$DIAMETER},
-    #            weight   => params->{$WEIGHT},
-    #------ Add original value as 'value' to the validation hash
-    #    @number_for{keys %your_numbers} = values %your_numbers;}
-    for my $item_attr ( keys %$validation_h ) {
-        $validation_h->{$item_attr}{value} = params->{$item_attr}
-          if ( exists params->{$item_attr} );
-    }
-
-    #----------Replace this with the above loop
     #------ Validate the User Input
-    my $is_valid = validate_item($validation_h);
+    my ($AdForm) = validate_add_item_form(
+        {
+            type     => params->{$TYPE},
+            location => params->{$LOCATION},
+            length   => params->{$LENGTH},
+            width    => params->{$WIDTH},
+            height   => params->{$HEIGHT},
+            diameter => params->{$DIAMETER},
+            weight   => params->{$WEIGHT},
+        }
+    );
 
-    if ( !$is_valid ) {
-        debug('Input not valid,  resubmit the add_item form!');
-        my $template_vars_h = populate_add_item_template($validation_h);
+    #----- Print success page
+    if ( $AdForm->is_valid() ) {
+        my $new_item_h = insert_item_to_database($AdForm);
+        debug( 'Returned from Insert item with new Item : ' . dump $new_item_h );
+
+        #todo Create Error if fail
+        #select last added and show in success page
+        my $form_data = $AdForm->form_data();
+        template $ADD_ITEM_SUCCESS_T,
+          {
+            new_item                  => $new_item_h,
+            bootstrap_validation_state => 'has-success', 
+        camelcase_str              => sub { camelcase_str(@_) },
+        format_yyyy_mm_dd_T_hhmmss => sub { format_yyyy_mm_dd_T_hhmmss(@_) },
+        add_item_route             => $PREFIX . q{/add_item}, 
+          };
+    }
+    else {
+    #----- or Render the form with the errors
+        debug('Form had some errors,  and is being resubmitted!');
+        my $template_vars_h = $AdForm->create_form_template();
+        my $template_vars_h->{return_route} =  
         template $ADD_ITEM_T, $template_vars_h;
     }
-
-    my $DbItem = Inventory::Db::Item->new( db_name => $INVENTORY_DB );
-
-    #---- Create Hash Of Item Table Column Names and Values
-    my %item_table_params =
-      map { $_ => ( $validation_h->{$_}{value} // undef ) } @item_table_cols;
-
-    my $insert_ok = $DbItem->insert_item_transaction( \%item_table_params );
-    debug( 'Returned from Insert item with return code : ' . $insert_ok );
-    $DbItem->commit_and_disconnect();
-
-    debug('Item is added to database') if $is_valid;
-
-    #    my $Item = Item::Item->new(
-    #        id       => undef,
-    #        type     => params->{$TYPE},
-    #        location => params->{$LOCATION},
-    #        length   => params->{$LENGTH},
-    #        width    => params->{$WIDTH},
-    #        height   => params->{$HEIGHT},
-    #        diameter => params->{$DIAMETER},
-    #        weight   => params->{$WEIGHT},
-    #
-    #        #      color         =>  params->{$COLOR},
-    #        measuring_sys => $DEFAULT_MEASURING_SYS,
-    #        units         => $DEFAULT_UNITS,
-    #
-    #        #------ Structure
-    #    'frame' =>  => params->{ 'frame' },
-    #    'top' =>  => params->{ 'top' },
-    #    'surface' =>  => params->{ 'surface' },
-    #    'fabric' =>  => params->{ 'fabric' },
-    #    'fabric' =>  => params->{ 'fabric' },
-
-    #------ Desc
-    #    'antique' =>  => params->{ 'antique' },
-    #    'designer' =>  => params->{ 'designer' },
-    #    'dis_assembly' =>  => params->{ 'dis_assembly' },
-    #    'fragile' =>  => params->{ 'fragile' },
-    #    're_assembly' =>  => params->{ 're_assembly' },
-    #    'special_handling' =>  => params->{ 'special_handling' },
-    #    'description' =>  => params->{ 'description' },
-    #    );
-
-    #    debug( "Item is :" . dump $Item );
-    #    return dump $Item;
 };
 
 #-------------------------------------------------------------------------------
@@ -272,358 +242,72 @@ post '/add_item' => sub {
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-#                      V A L I D A T I O N
+#    Get Data Lists
 #-------------------------------------------------------------------------------
-#---
-#------ Get a HashRef of valid value ranges for each item component.
-#------ Useful for select Lists and for validation hash.
-#---
-sub get_valid_item_data_h {
+sub validate_add_item_form {
+    my $params = shift;
+    my ( $types, $locations ) = get_type_and_location_lists();
+
+    my $AdForm = Inventory::Form::AddItem->new(
+        {
+            type      => $params->{type},
+            location  => "      " . $params->{location} . "sss",
+            length    => $params->{length},
+            width     => $params->{width},
+            height    => $params->{height},
+            diameter  => $params->{diameter},
+            weight    => $params->{weight},
+            types     => $types,
+            locations => $locations,
+            submitted => $YES,
+        }
+    );
+
+    $AdForm->validate();
+    debug( 'Form validation status is : ' . $AdForm->is_valid() );
+    return ($AdForm);
+}
+
+sub get_type_and_location_lists {
+    my $ItemDb    = Inventory::Db::Item->new( db_name => $INVENTORY_DB );
+    my $types     = get_types($ItemDb);
+    my $locations = get_locations($ItemDb);
+
+    $ItemDb->safe_disconnect();
+    return ( $types, $locations );
+}
+
+sub get_types {
+    my $DbItem = shift;
+    my $types = $DbItem->selectall_item_types( { id => 1, name => 1 } );
+    return $types;
+}
+
+sub get_locations {
+    my $DbItem = shift;
+    my $locations = $DbItem->selectall_locations( { id => 1, name => 1 } );
+    return $locations;
+}
+
+#-------------------------------------------------------------------------------
+#  Insert Item To Database
+#  Return the last Item to be inserted
+#-------------------------------------------------------------------------------
+sub insert_item_to_database {
+    my $AdForm = shift;
 
     my $DbItem = Inventory::Db::Item->new( db_name => $INVENTORY_DB );
-    my $types = $DbItem->selectall_item_types( { id => 1, name => 1 } );
+    my $item_form_field_h = $AdForm->get_form_field_values();
+    debug('Returned Form field values: ' . dump($item_form_field_h));
 
-    #--- Add a Selector Placeholder to beginning of list
-    my $type_default = 'Select ' . $TYPE_LABEL;
+    my $new_item_id = $DbItem->insert_item_transaction( $item_form_field_h );
+    my $new_item_h = $DbItem->select_one_item_detail($new_item_id) if
+    $new_item_id;
 
-    my $locations = $DbItem->selectall_locations( { id => 1, name => 1 } );
-
-    #    debug( 'Got Locations from DB: ' . dump $locations );
-
+    #--- Insert already committed
     $DbItem->safe_disconnect();
 
-    #--- Add a Selector Placeholder to beginning of list
-    my $location_default = 'Select ' . $LOCATION_LABEL;
-
-    return (
-        {
-            #--- Will be an integer
-            type => {
-                label                => $TYPE_LABEL,
-                name                 => $TYPE,
-                required             => $YES,
-                group_req            => [],
-                default_select_label => $type_default,
-                default_select_label_attr =>
-'selected=\"$type_default\" disabled="disabled" required="required" ',
-                default_value => $TYPE_DEFAULT_VALUE,
-                selection     => $types,
-                valid         => $NO,
-                value_list    => q/selection_id/,
-                message       => 'You need to enter a valid '
-                  . $ITEM_CATEGORY
-                  . ' type!',
-            },
-
-            #--- Will be an integer
-            location => {
-                label                => $LOCATION_LABEL,
-                name                 => $LOCATION,
-                required             => $YES,
-                group_req            => [],
-                default_select_label => $location_default,
-                default_select_label_attr =>
-'selected=\"$location_default\" disabled="disabled" required="required" ',
-                default_value => $LOCATION_DEFAULT_VALUE,
-                selection     => $locations,
-                valid         => $NO,
-                value_list    => q/selection_id/,
-                message       => 'You need to enter a valid location!',
-            },
-            length => {
-                label                => $LENGTH_LABEL,
-                name                 => $LENGTH,
-                required             => $YES,
-                group_req            => [q/length width height/],
-                selection            => [ (@$ONE_TO_500) ],
-                default_select_label => $INCHES_LABEL,
-                default_value        => $LENGTH_DEFAULT_VALUE,
-                valid                => $NO,
-                value_range          => [ 0, 1000 ],
-                message              => 'You need to enter a valid length!',
-            },
-            width => {
-                label                => $WIDTH_LABEL,
-                name                 => $WIDTH,
-                required             => $YES,
-                group_req            => [qw/length width height/],
-                selection            => [ (@$ONE_TO_500) ],
-                default_select_label => $INCHES_LABEL,
-                default_value        => $WIDTH_DEFAULT_VALUE,
-                valid                => $NO,
-                value_range          => [ 0, 1000 ],
-                message              => 'You need to enter a valid width!',
-            },
-            height => {
-                label                => $HEIGHT_LABEL,
-                name                 => $HEIGHT,
-                required             => $YES,
-                group_req            => [qw/length width height/],
-                selection            => [ (@$ONE_TO_500) ],
-                default_select_label => $INCHES_LABEL,
-                default_value        => $HEIGHT_DEFAULT_VALUE,
-                valid                => $NO,
-                value_range          => [ 0, 1000 ],
-                message              => 'You need to enter a valid width!',
-                message              => 'You need to enter a valid height!',
-            },
-            diameter => {
-                label                => $DIAMETER_LABEL,
-                name                 => $DIAMETER,
-                required             => $YES,
-                group_req            => [qw/diameter height/],
-                selection            => [ (@$FIVE_TO_1000) ],
-                default_select_label => $INCHES_LABEL,
-                default_value        => $DIAMETER_DEFAULT_VALUE,
-                valid                => $NO,
-                value_range          => [qw/0 1000/],
-                message              => 'You need to enter a valid diameter!',
-            },
-            weight => {
-                label                => $WEIGHT_LABEL,
-                name                 => $WEIGHT,
-                required             => $NO,
-                group_req            => [],
-                selection            => [ (@$TEN_TO_10000) ],
-                default_select_label => $POUNDS_LABEL,
-                default_value        => $WEIGHT_DEFAULT_VALUE,
-                valid                => $NO,
-                value_range          => [ 0, 1000 ],
-                message              => 'You need to enter a valid weight!',
-            },
-        }
-    );
-}
-
-#---
-#--- Populate add_item template
-#---
-sub populate_add_item_template {
-    my $item_data_h = shift;
-    my $status      = shift;
-
-    #    debug( 'Data (type))to populate the template: '
-    #          . dump( $item_data_h->{type} ) );
-    #    debug( 'Data (length)to populate the template: '
-    #          . dump( $item_data_h->{length} ) );
-
-    my @error_messages;
-    for my $msg ( keys(%$item_data_h) ) {
-        push( @error_messages, $msg ) if ( $msg =~ m/message$/ );
-    }
-
-    my %template_vars = (
-        error_messages => \@error_messages,
-
-        #--- Function CallBack
-        camelcase_str => sub { camelcase_str(@_) },
-
-        #--- Type
-        type_label                => $item_data_h->{type}{label},
-        type_name                 => $item_data_h->{type}{name},
-        type_default_select_label => $item_data_h->{type}{default_select_label},
-        type_default_value        => $item_data_h->{type}{default_value},
-        type_list                 => $item_data_h->{type}{selection},
-        type_default_select_label_attr =>
-          $item_data_h->{type}{default_select_label_attr},
-        type_bootstrap_field_state =>
-          $item_data_h->{type}{type_bootstrap_field_state},
-
-        #--- Location
-        location_label => $item_data_h->{location}{label},
-        location_name  => $item_data_h->{location}{name},
-        location_default_select_label =>
-          $item_data_h->{location}{default_select_label},
-        location_default_value => $item_data_h->{location}{default_value},
-        location_list          => $item_data_h->{location}{selection},
-        location_default_select_label_attr =>
-          $item_data_h->{location}{default_select_label_attr},
-        location_bootstrap_field_state =>
-          $item_data_h->{location}{location_bootstrap_field_state},
-
-        #--- Length
-        length_label => $item_data_h->{length}{label},
-        length_name  => $item_data_h->{length}{name},
-        length_default_select_label =>
-          $item_data_h->{length}{default_select_label},
-        length_default_value => $item_data_h->{length}{default_value},
-        length_list          => $item_data_h->{length}{selection},
-        lwh_bootstrap_field_state =>
-          $item_data_h->{length}{length_bootstrap_field_state},
-
-        #--- Width
-        width_label => $item_data_h->{width}{label},
-        width_name  => $item_data_h->{width}{name},
-        width_default_select_label =>
-          $item_data_h->{width}{default_select_label},
-        width_default_value => $item_data_h->{width}{default_value},
-        width_list          => $item_data_h->{width}{selection},
-        lwh_bootstrap_field_state =>
-          $item_data_h->{width}{width_bootstrap_field_state},
-
-        #--- Height
-        height_label => $item_data_h->{height}{label},
-        height_name  => $item_data_h->{height}{name},
-        height_default_select_label =>
-          $item_data_h->{height}{default_select_label},
-        height_default_value => $item_data_h->{height}{default_value},
-        height_list          => $item_data_h->{height}{selection},
-        lwh_bootstrap_field_state =>
-          $item_data_h->{height}{height_bootstrap_field_state},
-
-        #--- Diameter
-        diameter_label => $item_data_h->{diameter}{label},
-        diameter_name  => $item_data_h->{diameter}{name},
-        diameter_default_select_label =>
-          $item_data_h->{diameter}{default_select_label},
-        diameter_default_value => $item_data_h->{diameter}{default_value},
-        diameter_list          => $item_data_h->{diameter}{selection},
-        diameter_bootstrap_field_state =>
-          $item_data_h->{diameter}{diameter_bootstrap_field_state},
-
-        #--- Weight
-        weight_label => $item_data_h->{weight}{label},
-        weight_name  => $item_data_h->{weight}{name},
-        weight_default_select_label =>
-          $item_data_h->{weight}{default_select_label},
-        weight_default_value => $item_data_h->{weight}{default_value},
-        weight_list          => $item_data_h->{weight}{selection},
-        weight_bootstrap_field_state =>
-          $item_data_h->{weight}{weight_bootstrap_field_state},
-    );
-
-    return \%template_vars;
-}
-
-#---
-#------ Validate the add_item Input
-#------ Pass the HashRef of Input Data
-#------ Pass a validation HashRef
-#------ Return the Validation Hash with the 'valid' key set to $YES or $NO
-#---
-
-sub validate_item {
-    my $validation_h = shift;
-    my $is_valid     = $YES;
-
-    debug(
-        'Partial validation hash inside validation sub for TYPE : ' . dump(
-            map {
-                $_ . " => "
-                  . ( dump( $validation_h->{type}{$_} ) // q{} ) . "\n"
-              } (
-                qw/label name required group_req
-                  default_select_label default_value valid message /
-              )
-        )
-    );
-    debug(
-        'Partial validation hash inside validation sub for LOCATION : ' . dump(
-            map {
-                $_ . " => "
-                  . ( dump( $validation_h->{location}{$_} ) // q{} ) . "\n"
-              } (
-                qw/label name required group_req
-                  default_select_label default_value valid message value
-                  /
-              )
-        )
-    );
-    debug(
-        'Partial validation hash inside validation sub for DIAMETER : ' . dump(
-            map {
-                $_ . " => "
-                  . ( $validation_h->{diameter}{$_} // q{} ) . "\n"
-              } (
-                qw/label name required group_req
-                  default_select_label default_value valid message value_range/
-              )
-        )
-    );
-
-  VALIDATION_LOOP:
-    for my $item_v ( keys(%$validation_h) ) {
-        debug( 'Input before chomp : ' . $validation_h->{$item_v}{value} );
-        my $input_value =
-          lc( full_chomp( $validation_h->{$item_v}{value} ) );
-
-        debug( 'Input after chomp : ' . $input_value );
-
-        #------ Not defined field,  but the field is NOT required.
-        (        ( not defined $input_value )
-              && ( $validation_h->{$item_v}{required} == $NO ) )
-          && do {
-            $validation_h->{$item_v}{valid} = $YES;
-            next VALIDATION_LOOP;
-          };
-
-        #------ Not defined field,  and the field IS required.
-        (        ( not defined $input_value )
-              && ( $validation_h->{$item_v}{required} == $YES ) )
-          && do {
-            $validation_h->{$item_v}{valid} = $NO;
-            debug('INVALID: Input value not defined!!!');
-            $is_valid = $FAIL;
-            next VALIDATION_LOOP;
-          };
-
-       #------ If Input Value is ==  the "Default Selection Value" (placeholder)
-       #       and No Input is OK
-        (        ( $input_value eq lc $validation_h->{$item_v}{default_value} )
-              && ( $validation_h->{$item_v}{required} == $NO ) )
-          && do {
-            debug( $input_value . ' is the default value, but thats ok!!!' );
-            $validation_h->{$item_v}{valid} = $YES;
-            next VALIDATION_LOOP;
-          };
-
-        #---If the value can be validated against a list,  and the list name
-        #   the criteria is the selection_list 'id'
-        if (   ( $validation_h->{$item_v}{value_list} )
-            && ( $validation_h->{$item_v}{value_list} eq q/selection_id/) )
-        {
-            #------ If the selection matches the list of valid values.
-
-            debug(  'Validating '
-                  . $input_value
-                  . ' against a list of '
-                  . $item_v
-                  . 's' );
-            ( first { $input_value == ( $_->{id} ) }
-                @{ $validation_h->{$item_v}{selection} } )
-              && do {
-                $validation_h->{$item_v}{valid} = $YES;
-                next VALIDATION_LOOP;
-              };
-        }
-
-        #---If the value can be verified as being within a range of
-        #   values(inclusive)
-        #   the criteria is the selection_list 'id'
-        if ( $validation_h->{$item_v}{value_range} ) {
-            debug(  'Testing '
-                  . $input_value
-                  . ' against value range '
-                  . dump $validation_h->{$item_v}{value_range} );
-            if ( ( $input_value >= $validation_h->{$item_v}{value_range}->[0] )
-                && (
-                    $input_value <= $validation_h->{$item_v}{value_range}->[1] )
-              )
-            {
-
-                $validation_h->{$item_v}{valid} = $YES;
-                next VALIDATION_LOOP;
-
-            }
-        }
-
-        #--- Fall-Through
-        $is_valid = $FAIL;
-        debug( 'INVALID: Defined but not valid; ' . $item_v . ' value!' );
-
-    }
-
-    return $is_valid;
+    return $new_item_h;
 }
 
 #-------------------------------------------------------------------------------

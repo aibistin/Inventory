@@ -3,25 +3,25 @@
  <div class="panel-heading">
     <h6 class="panel-title">Add Item To Your Inventory</h6>
  </div>
- <div class="panel-body">
+ <div class="panel-body {% bootstrap_validation_state %}">
   <form class="form-horizontal" role="form"  action="add_item" method="post"  >
-{% IF has_error %}
+{% IF not is_valid  %}
    {% FOR err_msg IN error_messages %}
-     <p class="text-warning">{% err_msg %}</p>
+     <p class="text-warning text-center">{% err_msg %}</p>
    {% END %}
 {% END %}
 <!-- Item Type Select Group -->
   <div class="row">
-  <div class="form-group {% type_bootstrap_field_state %}">
-     <label for="{% type_name %}" class="col-lg-2 control-label">{% type_label %}</label>
+  <div class="form-group {% type.bootstrap_validation_state %}">
+     <label for="{% type.name %}" class="col-lg-2 control-label">{% type.label %}</label>
         <div class="col-lg-2">
             <select class="form-control input-sm required"
-            name="{% type_name %}" id="{% type_name %}" >
+            name="{% type.name %}" id="{% type.name %}" >
             <option 
-                value="{% type_default_value %}" {%
-                type_default_select_label_attr %}  >{% camelcase_str(type_default_select_label) %}
+                value="{% type.default_value %}" {%
+                type.default_select_label_attr %}  >{% camelcase_str(type.default_select_label) %}
             </option>
-            {% FOR type IN type_list %}
+            {% FOR type IN type.selection_list %}
                 <option value="{% type.id %}" >{% camelcase_str(type.name) %}</option>
             {% END %}
             </select>
@@ -32,21 +32,20 @@
 
 <!-- Location Select Group -->
   <div class="row">
-  <div class="form-group {% location_bootstrap_field_state %}">
-     <label for="{% location_name %}" class="col-lg-2 control-label">{% location_label %}</label>
+  <div class="form-group {% location.bootstrap_validation_state %}">
+     <label for="{% location.name %}" class="col-lg-2 control-label">{% location.label %}</label>
         <div class="col-lg-2">
             <select class="form-control input-sm required"
-            name="{% location_name %}" id="{% location_name %}">
+            name="{% location.name %}" id="{% location.name %}">
             <option 
-                value="{% location_default_value %}" {%
-                location_default_select_label_attr %}  >{% camelcase_str(location_default_select_label) %}
+                value="{% location.default_value %}" {%
+                location.default_select_label_attr %}  >{% camelcase_str(location.default_select_label) %}
             </option>
-            {% FOR location IN location_list %}
+            {% FOR location IN location.selection_list %}
                 <option value="{% location.id %}" {% location.attr || '' %}
                 >{% camelcase_str(location.name) %}</option>
             {% END %}
             </select>
-            <span class="help-block">Where it is now.</span>
         </div>
   </div>
   </div> <!-- /row -->
@@ -54,13 +53,13 @@
 <!-- Length Select Group -->
   <div class="row">
   <!-- Length Width Height -->
-    <div class="form-group {% lwh_bootstrap_field_state %}">
-        <label for="{% length_name %}" class="col-lg-2 control-label">{% length_label %}</label>
+    <div class="form-group {% lwh_bootstrap_validation_state %}">
+        <label for="{% length.name %}" class="col-lg-2 control-label">{% length.label %}</label>
         <div class="col-lg-1">
             <select class="form-control input-sm"
-             name="{% length_name %}" id="{% length_name %}">
-             <option value={%length_default_value%}>{% length_default_select_label %}</option>
-            {% FOR i_length IN length_list %}
+             name="{% length.name %}" id="{% length.name %}">
+             <option value={%length.default_value%}>{% length.default_select_label %}</option>
+            {% FOR i_length IN length.selection_list %}
                 <option>{% i_length %}</option>
             {% END %}
             </select>
@@ -68,24 +67,24 @@
 
 
     <!-- Width Select Group -->
-        <label for="width" class="col-lg-1 control-label">{% width_label %}</label>
+        <label for="width" class="col-lg-1 control-label">{% width.label %}</label>
         <div class="col-lg-1">
             <select class="form-control input-sm"
-             name="{% width_name %}" id="{% width_name %}">
-             <option value={%width_default_value%}>{% width_default_select_label %}</option>
-            {% FOR i_width IN width_list %}
+             name="{% width.name %}" id="{% width.name %}">
+             <option value={%width.default_value%}>{% width.default_select_label %}</option>
+            {% FOR i_width IN width.selection_list %}
                 <option>{% i_width %}</option>
             {% END %}
             </select>
         </div>
 
     <!-- Height Select Group -->
-        <label for="{% height_name %}" class="col-lg-1 control-label">{% height_label %}</label>
+        <label for="{% height.name %}" class="col-lg-1 control-label">{% height.label %}</label>
         <div class="col-lg-1">
             <select class="form-control input-sm" 
-             name="{% height_name %}" id="{% height_name %}">
-             <option value={%height_default_value%}>{% height_default_select_label %}</option>
-            {% FOR i_height IN height_list %}
+             name="{% height.name %}" id="{% height.name %}">
+             <option value={%height.default_value%}>{% height.default_select_label %}</option>
+            {% FOR i_height IN height.selection_list %}
                 <option >{% i_height %}</option>
             {% END %}
             </select>
@@ -97,13 +96,13 @@
 
 <!-- Diameter Select Group -->
   <div class="row">
-    <div class="form-group {% diameter_bootstrap_field_state %}">
-        <label for="{% diameter_name %}" class="col-lg-2 control-label">{% diameter_label %}</label>
+    <div class="form-group {% diameter.bootstrap_validation_state %}">
+        <label for="{% diameter.name %}" class="col-lg-2 control-label">{% diameter.label %}</label>
         <div class="col-lg-2">
                     <select class="form-control input-sm" 
-                     name="{% diameter_name %}" id="{% diameter_name %}">
-                    <option value={%diameter_default_value%}>{% diameter_default_select_label %}</option>
-                    {% FOR i_diameter IN diameter_list %}
+                     name="{% diameter.name %}" id="{% diameter.name %}">
+                    <option value={%diameter.default_value%}>{% diameter.default_select_label %}</option>
+                    {% FOR i_diameter IN diameter.selection_list %}
                         <option >{% i_diameter %}</option>
                     {% END %}
                     </select>
@@ -113,17 +112,17 @@
 
 <!-- Weight Select Group -->
   <div class="row">
-    <div class="form-group {% weight_bootstrap_field_state %}">
-        <label for="{% weight_name %}" class="col-lg-2 control-label">{% weight_label %}</label>
+    <div class="form-group {% weight.bootstrap_validation_state %}">
+        <label for="{% weight.name %}" class="col-lg-2 control-label">{% weight.label %}</label>
         <div class="col-lg-2">
             <select class="form-control input-sm" 
-                    name="{% weight_name %}" id="{% weight_name %}">
-                    <option value={%weight_default_value%}>{% weight_default_select_label %}</option>
-            {% FOR i_weight IN weight_list %}
+                    name="{% weight.name %}" id="{% weight.name %}">
+                    <option value={%weight.default_value%}>{% weight.default_select_label %}</option>
+            {% FOR i_weight IN weight.selection_list %}
                 <option >{% i_weight %}</option>
             {% END %}
             </select>
-        </div>
+            </div>
     </div>
   </div> <!-- /row -->
 
