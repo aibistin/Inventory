@@ -365,11 +365,13 @@ sub BUILD {
 sub create_form_template {
     my $self      = shift;
     my $form_data = $self->form_data();
+    my $form_bootstrap_validation_state = q{};
 
     my @error_messages;
 
     #--- Create a list of form_field error messages if the form is invalid
     if ( not $self->is_valid() ) {
+        $form_bootstrap_validation_state = 'has-error';
         for my $form_field ( keys(%$form_data) ) {
             if ( $form_data->{$form_field}{valid} ) {
                 $form_data->{$form_field}{bootstrap_validation_state} =
@@ -383,7 +385,7 @@ sub create_form_template {
         }
     }
     return {
-        bootstrap_validation_state => 'has-error',
+        bootstrap_validation_state => $form_bootstrap_validation_state,
         #--- Function CallBack
         camelcase_str  => sub { camelcase_str(@_) },
         is_valid      => $self->is_valid(), 

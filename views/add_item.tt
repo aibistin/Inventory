@@ -50,10 +50,19 @@
   </div>
   </div> <!-- /row -->
 
-<!-- Length Select Group -->
-  <div class="row">
+
+<!-- ****  Dimensions Button Collapse -->
+ <div class="row"><!-- dimensions row -->
+<button type="button" class="btn btn-link" data-toggle="collapse" data-target="#itemDimensions">
+   Item Dimensions
+  </button>
+
+  <div id="itemDimensions" class="collapse">
+
   <!-- Length Width Height -->
-    <div class="form-group {% lwh_bootstrap_validation_state %}">
+  <div class="row">
+  <div class="form-group {% lwh_bootstrap_validation_state %}">
+    <!-- Length Select Group -->
         <label for="{% length.name %}" class="col-lg-2 control-label">{% length.label %}</label>
         <div class="col-lg-1">
             <select class="form-control input-sm"
@@ -89,8 +98,7 @@
             {% END %}
             </select>
         </div>
-        <p class="help-block">Item Dimensions.</p>
-      </div>
+      </div> <!-- /form-group -->
   </div> <!-- /row -->
 
 
@@ -110,24 +118,60 @@
     </div>
   </div> <!-- /row -->
 
-<!-- Weight Select Group -->
-  <div class="row">
-    <div class="form-group {% weight.bootstrap_validation_state %}">
-        <label for="{% weight.name %}" class="col-lg-2 control-label">{% weight.label %}</label>
-        <div class="col-lg-2">
-            <select class="form-control input-sm" 
-                    name="{% weight.name %}" id="{% weight.name %}">
-                    <option value={%weight.default_value%}>{% weight.default_select_label %}</option>
-            {% FOR i_weight IN weight.selection_list %}
-                <option >{% i_weight %}</option>
-            {% END %}
-            </select>
-            </div>
-    </div>
-  </div> <!-- /row -->
+  </div><!-- /dimensions collapse -->
+
+  </div><!-- /dimensions row -->
+<!-- **** END  Dimensions Button Collapse -->
+
+
+<!-- ****  Weight Button Collapse -->
+   <div class="row">
+   <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#itemWeight">
+  Item Weight
+  </button>
+  <div id="itemWeight" class="collapse">
+    <!-- Weight Select Group -->
+        <div id="weight" class="form-group {% weight.bootstrap_validation_state %} ">
+            <label for="{% weight.name %}" class="col-lg-2 control-label">{% weight.label %}</label>
+            <div class="col-lg-2">
+                <select class="form-control input-sm" 
+                        name="{% weight.name %}" id="{% weight.name %}">
+                        <option value={%weight.default_value%}>{% weight.default_select_label %}</option>
+                {% FOR i_weight IN weight.selection_list %}
+                    <option >{% i_weight %}</option>
+                {% END %}
+                </select>
+                </div>
+        </div>
+    </div> <!-- /row -->
+ </div>
+<!-- **** END  Weight Button Collapse -->
+
+<!-- ****  Desc Button Collapse -->
+<div class="row">
+<button type="button" class="btn btn-link" data-toggle="collapse" data-target="#itemDesc">
+  Item Description
+  </button>
+
+  <div id="itemDesc" class="collapse">...</div>
+
+</div><!-- /row -->
+<!-- **** END  Desc Button Collapse -->
+
+<!-- ****  Photo Button Collapse -->
+<div class="row">
+<button type="button" class="btn btn-link" data-toggle="collapse" data-target="#itemPhoto">
+  Item Photo
+  </button>
+
+  <div id="itemPhoto" class="collapse">...</div>
+
+</div><!-- /row -->
+<!-- **** END  Photo Button Collapse -->
 
 
  </div><!-- /panel-body -->
+ 
  <div class="panel-footer">
   <div class="row">
         <div class="col-lg-6">

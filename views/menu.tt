@@ -3,9 +3,9 @@
 <h4 class="text-muted">WheresMyStuff</h4>
 <ul class="nav nav-justified">
     <li class="active"><a href="{% request.uri_base %}/{% home_dir %}">Home</a></li>
-    <li><a href="{% request.uri_base %}/{% view_inventory %}">View Inventory</a></li>
+    <li><a href="{% request.uri_base %}/item/view_items">View Inventory</a></li>
     <li><a href="{% request.uri_base %}/{% customers %}">Customers</a></li>
-    <li><a href="{% request.uri_base %}/{% update_inventory %}">Edit Inventory</a></li>
+    <li><a href="{% request.uri_base %}/item/add_item">Edit Inventory</a></li>
     <li><a href="{% request.uri_base %}/{% about %}">About</a></li>
     <li><a href="{% request.uri_base %}/{% contact %}">Contact</a></li>
 </ul>
