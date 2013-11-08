@@ -1,17 +1,20 @@
 # ABSTRACT: Connect to Invenory DB
 #-------------------------------------------------------------------------------
-#  Connects to Inventory Database and returns a Database handle.
-#  Also has a safe Commit and Disconnect from Database
-#  All functions are exported
+=head2
+  Connects to Inventory Database and returns a Database handle.
+  Also has a safe Commit and Disconnect from Database.
+=cut
 #-------------------------------------------------------------------------------
 package Inventory::Db;
 use Moo;
-with 'Inventory::Connect';
+with 'Inventory::Roles::Connect';
 use autodie;
 
+#use DBI qw(:sql_types); #sql_types for SQL_BLOB
 use DBI;
 use Carp qw(croak);
 use Data::Dump qw(dump);
+use Types::Path::Tiny qw/Path AbsPath/;
 
 #------ Locate my Databse Modules
 my $run_dir         = "$FindBin::Bin";
@@ -28,7 +31,8 @@ use FindBin;
 #------ Attributes
 has db_name => (
     is      => 'ro',
-    isa     => Str,
+    isa     => AbsPath,
+    coerce => AbsPath->coercion,
     default => sub { $DEFAULT_DB_NAME }
 );
 

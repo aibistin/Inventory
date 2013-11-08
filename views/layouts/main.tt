@@ -12,14 +12,18 @@
 
 <!-- CDN Bootstrap CSS Use bootstrapcdn.com CDN. Use local Bootstrap (Bootstrap 3.0.0) if no CDN -->
 <link rel="stylesheet"  href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css">
-<!-- Local Bootstrap CSS -->
-<!-- <link rel="stylesheet" href="{% request.uri_base %}/css/bootstrap.min.css">  -->
+<!-- Local Bootstrap CSS ONLY use when no CDN -->
+<!--  <link rel="stylesheet" href="{% request.uri_base %}/css/bootstrap.min.css">  -->
   <!-- My Css -->
   <link rel="stylesheet" href="{% request.uri_base %}/css/mover.css" /> 
 
 
  <!-- Custom styles for this template (taken from Bootstrap3 marketing example) -->
  <link href="{% request.uri_base %}/css/justified-nav.css" rel="stylesheet">
+
+ <!-- Custom styles for File Upload Form  (extension only )-->
+ <link href="{% request.uri_base %}/css/jasny-bootstrap.min.css" rel="stylesheet">
+
 
 
 <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
@@ -59,6 +63,9 @@
 
 <!-- Use Google CDN jQuery. If not available, use local jQuery -->
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" type="text/javascript"></script>
+<!-- File Upload JS -->
+<script src="{% request.uri_base %}/js/jasny-bootstrap.min.js" type="text/javascript"></script>
+
 
 <script>
     if (!window.jQuery) {
@@ -80,7 +87,16 @@
     document.write(unescape'%3Cscript src="{% request.uri_base %}/js/bootstrap.min.js"%3E%3C/script%3E');
 }
 </script>
-
-
 </body>
+
+<!-- Local Scripts until I fix the Switch over -->
+<!-- Use Local jQuery. Only because the switch to local fails-->
+<!-- <script src="{% request.uri_base %}/js/jquery-ui-1.10.2.min.js"></script>
+-->
+<!--
+<script src="{% request.uri_base %}/js/jquery-ui-1.10.3.custom.min.js"></script>;
+<script> src="{% request.uri_base %}/js/bootstrap.min.js"></script>
+<script src="{% request.uri_base %}/js/jasny-bootstrap.min.js" type="text/javascript"></script>
+<script src="{% request.uri_base %}/js/jasny-bootstrap.min.js" type="text/javascript"></script>
+-->
 </html>

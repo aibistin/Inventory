@@ -1,11 +1,17 @@
 # ABSTRACT: Items and the Inventory Database
 #-------------------------------------------------------------------------------
-#  Items and the Inventory Database
-#  Subclass of the Inventory::Db Module
+
+=head2
+  Items and the Inventory Database
+  Item Images with Inventory::Dir
+  Subclass of the Inventory::Db Module
+=cut
+
 #-------------------------------------------------------------------------------
 package Inventory::Db::Item;
 use Moo;
-extends 'Inventory::Db';
+extends q{Inventory::Db};
+with q{Inventory::Roles::Dir};
 
 #------
 use autodie;
@@ -13,6 +19,10 @@ use Carp qw(croak);
 use Data::Dump qw(dump);
 use utf8::all;
 use Types::Standard qw{ Bool Str };
+use Types::Path::Tiny qw/Path AbsPath/;
+use Try::Tiny;
+
+#use DBI qw(:sql_types);    #sql_types for SQL_BLOB
 
 #--- My utility files
 use MyUtil qw { camelcase_str };
@@ -31,27 +41,83 @@ my $ITEM_TABLE = q{item};
 my $DB_CATALOG = q{undef};
 my $DB_SCHEMA  = q{undef};
 my $ID_NAME    = q{id};
+
+#-------------------------------------------------------------------------------
+#  ATTRIBUTES
+#-------------------------------------------------------------------------------
+
+#------ The following attributes will be given
+has origin_filepath_abs => (
+    is     => 'ro',
+    isa    => AbsPath,
+    coerce => AbsPath->coercion,
+);
+
+has destination_base_dir_abs => (
+    is     => 'ro',
+    isa    => AbsPath,
+    coerce => AbsPath->coercion,
+);
+
+has destination_type_subdir_name => (
+    is     => 'ro',
+    isa    => Str,
+    coerce => Str->coercion,
+);
+
+has new_filename => (
+    is     => 'ro',
+    isa    => Str,
+    coerce => Str->coercion,
+);
+
+#------ The following attriutes will be created
+has sub_directory_name => (
+    is     => 'rw',
+    isa    => Str,
+    coerce => Str->coercion,
+);
+
+has destination_filepath_abs => (
+    is     => 'rw',
+    isa    => AbsPath,
+    coerce => AbsPath->coercion,
+);
+
+has dummy_path => (
+    is     => 'ro',
+    isa    => AbsPath,
+    coerce => AbsPath->coercion,
+);
+
+#-------------------------------------------------------------------------------
+#  Inventory Database Handle
 #-------------------------------------------------------------------------------
 #  Inventory Database Handle
 #-------------------------------------------------------------------------------
 
-#-- Make this our $DBH and put in Db.pm
-
-=head2 set_dbh
-     Set the global DBH if it is not already set;
-=cut
-
-#sub set_dbh {
-#    my $self = shift || do { croak('set_dbh() is an instance method!') };
-#    my $attr = shift;
-#    $log->debug('DBH at start of set_dbh(): ' . dump $DBH);
-#    my $DBH  = $self->get_inv_dbh() unless $DBH;
-#    $log->debug('DBH at end of set_dbh(): ' . dump $DBH);
-#}
 #
 #-------------------------------------------------------------------------------
 #  SQL Strings Handles
 #-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+#  Images Directory Handle
+#-------------------------------------------------------------------------------
+
+=head2 get_all_images
+  Read the contents of the Inventory Images Directory.
+=cut
+
+sub get_all_images {
+    my $self = shift;
+    my $dh   = $self->get_dir();
+    my ( $image, @images );
+    while ( defined( $image = $dh->read ) ) {
+        push @images, $image;
+    }
+    return \@images;
+}
 
 #-------------------------------------------------------------------------------
 #     Items
@@ -102,7 +168,6 @@ SELECT_SQL
     return $sql;
 
 }
-
 
 sub select_one_item_detail_sql {
     my $self = shift;
@@ -197,23 +262,95 @@ sub get_all_items_formatted {
         $item->{name} = camelcase_str( $item->{name} );
         $item->{comments} =
           camelcase_str( $item->{comments} );
-        $item->{updated}       = format_yyyy_mm_dd_T_hhmmss( $item->{updated} );
+        $item->{updated} = format_yyyy_mm_dd_T_hhmmss( $item->{updated} );
     }
     return $array_of_h;
 }
-
 
 =head2 select_one_item_detail
   Returns an HashRef of One Item Table Row that matches a give ID.
 =cut
 
 sub select_one_item_detail {
-    my $self = shift;
-    my $id = shift;
+    my $self    = shift;
+    my $id      = shift;
     my $inv_dbh = $self->get_inv_dbh();
     my $row_href =
-    $inv_dbh->selectrow_hashref($self->select_one_item_detail_sql(), undef, ($id));
+      $inv_dbh->selectrow_hashref( $self->select_one_item_detail_sql(),
+        undef, ($id) );
     return $row_href;
+}
+
+#-------------------------------------------------------------------------------
+#  Lookup Table Selects
+#-------------------------------------------------------------------------------
+#------ Photo/Image Table
+sub select_item_photo_sql {
+    my $self = shift;
+
+    my $sql = <<"SELECT_SQL";
+   SELECT id, 
+          item, 
+          name, 
+          abs_location, 
+          rel_location, 
+          comments, 
+          updated
+    FROM item_photo
+    WHERE
+        item = ?
+SELECT_SQL
+
+    return $sql;
+
+}
+
+=head2 select_item_photo
+
+  Selects any photos that match a given item id.
+  Pass;
+  $item_id, 
+  column_params => {
+            id      => 1,
+            item    => 1,
+            name    => 1, 
+            abs_location   => 1, 
+            rel_location   => 1, 
+            comments       => 1, 
+            updated       => 1, 
+  }, 
+  Returns an array of HashRefs of photos matching the given ID
+=cut
+
+sub select_item_photo {
+    my $self          = shift;
+    my $item_id       = shift;
+    my $column_params = shift // {
+        id           => 1,
+        item         => 1,
+        name         => 1,
+        abs_location => 1,
+        rel_location => 1,
+        comments     => 1,
+    };
+    $log->debug('Select Photo: about to call selectall_slice!');
+    my $array_of_h = $self->selectall_slice(
+        {
+            sql           => $self->select_item_photo_sql(),
+            column_params => $column_params,
+            bind_values   => [$item_id]
+        }
+    );
+
+    $log->debug( 'Select Photo: results !' . ( dump $array_of_h ) );
+    return $array_of_h;
+}
+
+sub get_select_item_photo_sth {
+    my $self    = shift;
+    my $inv_dbh = $self->get_inv_dbh();
+    my $sth     = $inv_dbh->prepare( $self->select_item_photo_sql() );
+    return $sth;
 }
 
 #-------------------------------------------------------------------------------
@@ -254,7 +391,7 @@ sub get_select_location_sql {
 
     my $sql = <<"SELECT_SQL";
    SELECT id, 
-          address_id, 
+          address, 
           name, 
           updated 
     FROM  location
@@ -308,10 +445,10 @@ SELECT_SQL
 
 =head2 selectall_locations
    Select all locations(id's and address id and name).
-   Returns an ArrayRef of [{id => 1, address_id => 'address_id', name
+   Returns an ArrayRef of [{id => 1, address => 'address', name
    => 'some name'}, {}....]
    For only particular table columns, send  a column_params  hashref.
-   selectall_locationa({ id => 1, address_id => 1,  name => 1})
+   selectall_locationa({ id => 1, address => 1,  name => 1})
 =cut
 
 sub selectall_locations {
@@ -323,7 +460,7 @@ sub selectall_locations {
 
     my $sql = <<"SELECT_SQL";
    SELECT id, 
-          address_id, 
+          address, 
           name, 
           description, 
           updated
@@ -346,6 +483,7 @@ SELECT_SQL
 #------ Insert to ITEM sql
 #------
 sub get_insert_item_sql {
+
     my $self = shift || croak('get_insert_item_sql() is an instance method!');
 
     my $sql = <<"INSERT_SQL";
@@ -388,8 +526,8 @@ sub get_insert_item_desc_sth {
     my $sql = <<"POPULATE_SQL";
    INSERT OR IGNORE
           INTO item_desc(
-            item_id,
-            desc_id 
+            item,
+            desc 
     )
     VALUES (?, ?)
 POPULATE_SQL
@@ -407,8 +545,8 @@ sub get_insert_item_structure_sth {
     my $sql = <<"POPULATE_SQL";
    INSERT OR IGNORE
           INTO item_structure(
-            item_id,
-            structure_id 
+            item,
+            structure 
     )
     VALUES (?, ?)
 POPULATE_SQL
@@ -425,8 +563,8 @@ sub get_insert_item_color_sth {
     my $sql  = <<"POPULATE_SQL";
    INSERT OR IGNORE
           INTO item_color(
-            item_id,
-            color_id 
+            item,
+            color 
     )
     VALUES (?, ?)
 POPULATE_SQL
@@ -444,22 +582,43 @@ sub get_insert_item_photo_sth {
    INSERT OR IGNORE
           INTO item_photo(
             id,
-            item_id, 
-            path_to_photo, 
-            photo_name, 
+            item, 
+            name, 
+            abs_location, 
+            rel_location, 
+            comments, 
+            updated
     )
-    VALUES (?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
 POPULATE_SQL
 
     my $inv_dbh = $self->get_inv_dbh();
     return $inv_dbh->prepare($sql);
 }
 
-=head2
-  Insert Item Transaction
-  Pass a HashRef containing the Column Names and values
-  Return the last id to be inserted
+=head2 insert_and_return_item_details 
+       Same as insert_item_transaction with the addition of returning 
+       a hashRef of the last item to be inserted,  including an ArrayRef
+       of the item photo locations.
 =cut
+
+sub insert_and_return_item_details {
+    my $self = shift;
+    my ($new_item_id) = $self->insert_item_transaction(shift);
+    return $FAIL unless $new_item_id;
+    my $new_item_h = $self->select_one_item_detail($new_item_id);
+    $new_item_h->{photos} = $self->select_item_photo($new_item_id);
+    $log->debug( 'Got the new item detail with photos: ' . dump $new_item_h );
+    return $new_item_h;
+}
+
+=head2 insert_item_transaction 
+  Pass a HashRef containing the Column Names and values
+  Insert the Item to the Item table, and populat all related 
+  lookup tables.
+  Return the last id to be inserted.
+=cut
+
 sub insert_item_transaction {
     my $self        = shift;
     my $column_data = shift
@@ -468,78 +627,79 @@ sub insert_item_transaction {
       unless ( ref($column_data) eq 'HASH' );
     my ($new_id);
 
-#    $log->debug( 'Item Database Object : ' . dump $self );
-#    $log->debug( 'Autocommit : ' . $self->auto_commit );
+    #    $log->debug( 'Item Database Object : ' . dump $self );
+    #    $log->debug( 'Autocommit : ' . $self->auto_commit );
 
     #------ Get Statement Handles
-    my $inv_dbh  = $self->get_inv_dbh();
-    my $item_sth = $self->get_insert_item_sth();
-
-    #    my $item_desc_sth      = $self->get_insert_item_desc_sth();
-    #    my $item_structure_sth = $self->get_insert_item_structure_sth();
-    #    my $item_color_sth     = $self->get_insert_item_color_sth();
-    #    my $item_photo_sth     = $self->get_insert_item_photo_sth();
-    #
+    my $inv_dbh = $self->get_inv_dbh();
+    my $photo_upload_obj = $column_data->{photo} or undef;
 
     #--- Id should be undef.
     $column_data->{id} = undef;
 
     $column_data->{updated} = get_db_formatted_localtime($inv_dbh);
 
-    my @bind_params = @$column_data{@ITEM_TABLE_COLS};
+  #------ Save Photo To Images Directory
+  #    $log->debug( 'Filename Attribute : ' . $self->destination_base_dir_abs );
+  #    $log->debug( 'Dirname Attribute : ' . $self->image_directory );
+
+    my @item_bind_values = @$column_data{@ITEM_TABLE_COLS};
 
     #----- ENABLE TRANSACTION
-   $inv_dbh->{RaiseError} = 1;
-   $inv_dbh->begin_work();
-   eval {
+    $inv_dbh->{RaiseError} = 1;
+    $inv_dbh->begin_work();
+    my $item_sth = $self->get_insert_item_sth();
+    my $photo_sth = $self->get_insert_item_photo_sth() if $photo_upload_obj;
+    $log->debug('Starting Insert Transaction!');
+    my $transaction_ok = try {
 
         #--- Add to Item
-        $item_sth->execute(@bind_params);
+        $item_sth->execute(@item_bind_values);
+
+        #--- Return the last id to be inserted
+        $new_id =
+          $inv_dbh->last_insert_id( $DB_CATALOG, $DB_SCHEMA, $ITEM_TABLE,
+            $ID_NAME );
 
         #        #--- Add to Item Description
-        #        $item_sth->execute(@$bind_params) || do {
-        #        $item_desc_sth->execute(@$bind_params) || do {
-        #            $log->error( $item_desc_sth->errstr );
-        #            $item_desc_sth->finish;
-        #            die;
-        #        };
         #        #--- Add to Item Structure
-        #        $item_sth->execute(@$bind_params) || do {
-        #        $item_structure_sth->execute(@$bind_params) || do {
-        #            $log->error( $item_structure_sth->errstr );
-        #            $item_structure_sth->finish;
-        #            die;
-        #        };
         #        #--- Add to Item Color
-        #        $item_color_sth->execute(@$bind_params) || do {
-        #            $log->error( $item_color_sth->errstr );
-        #            $item_color_sth->finish;
-        #            die;
-        #        };
-        #        #--- Add to Item Photo
-        #        $item_photo_sth->execute(@$bind_params) || do {
-        #            $log->error( $item_photo_sth->errstr );
-        #            $item_photo_sth->finish;
-        #            die;
-        #        };
 
-    $inv_dbh->commit;
-    #--- Return the last id to be inserted
-     $new_id =   $inv_dbh->last_insert_id($DB_CATALOG,  $DB_SCHEMA, $ITEM_TABLE, $ID_NAME);
-    };
+        #------ Save the image file to user address and insert the returned
+        #       location file path to the item_photo table for this item.
+        if ($photo_sth) {
+            $self->sub_directory_name($new_id);
+            $self->copy_and_rename_file()
+              or croak 'Unable to save the image file!';
 
-
-
-    if ( $@ ) {
-        $log->error('Insert Failed! :    ' . $@);
-        eval{$inv_dbh->rollback};
-        $log->error('Rollback failed! ') if $@;
-        $item_sth->finish;
-        return $FAIL;
+            #-- Note use the Item  as photo.name for now
+            $photo_sth->execute(
+                (
+                    undef,
+                    $new_id,
+                    $column_data->{type},
+                    $self->destination_filepath_abs->path,
+                    $self->item_file_relative_path,
+                    'No Comments yet!',
+                    get_db_formatted_localtime($inv_dbh)
+                )
+            );
+        }
+        $inv_dbh->commit;
     }
 
-
-   return $new_id;
+    #    if ($@) {
+    catch {
+        $log->error( 'Insert Failed! :    ' . $_ );
+        eval { $inv_dbh->rollback };
+        $log->error('Rollback failed! ') if $@;
+        $item_sth->finish                if $item_sth;
+        $photo_sth->finish               if $photo_sth;
+        return $FAIL;
+    };
+    return $FAIL unless $transaction_ok;
+    $log->debug( 'Finished Insert Transaction, with new ID: ' . $new_id );
+    return $new_id;
 }
 
 #-------------------------------------------------------------------------------
@@ -556,6 +716,7 @@ sub prepare_statement {
     return $inv_dbh->prepare( $sql, $attr );
 
 }
+
 #-------------------------------------------------------------------------------
 #  Execute the Select statement
 #  Returns the Statement handle or undef if it fails.
@@ -564,11 +725,11 @@ sub prepare_statement {
 sub execute_select {
     my $self = shift;
     my $sth = shift or croak 'execute_select() requires a SQL statment handle.';
-    my $bind_params_ref = shift;
+    my $bind_values_ref = shift;
     croak 'execute_select(), bind params must be an ArrayRef!'
-      unless ( ref $bind_params_ref eq 'ARRAY' );
+      unless ( ref $bind_values_ref eq 'ARRAY' );
 
-    return $sth->execute(@$bind_params_ref) or die $DBH::errstr;
+    return $sth->execute(@$bind_values_ref) or die $DBH::errstr;
 }
 
 #-------------------------------------------------------------------------------
@@ -598,7 +759,7 @@ sub fetchall_arrayref {
    {
      sql => 'SELECT * FROM table',
      column_params => {$column_params}, # for use in Slice => $column_params
-     bind_params => \@bind_params,
+     bind_values => \@bind_values,
    }
 =cut
 
@@ -606,11 +767,11 @@ sub selectall_slice {
     my $self = shift;
     my $attr = shift
       or croak
-      'selectall_arrayref() requires SQL, attributes and maybe bind params!';
+      'selectall_slice() requires SQL, attributes and maybe bind params!';
     my $inv_dbh = $self->get_inv_dbh();
     my $sql = $attr->{sql} or croak 'selectall_arrayref() requires SQL.';
     my $column_params_h = $attr->{column_params} || {};
-    my $bind_params     = $attr->{bind_params};
+    my $bind_values     = $attr->{bind_values};
 
     #--- Bind params are optional
     return $inv_dbh->selectall_arrayref(
@@ -619,7 +780,7 @@ sub selectall_slice {
             Slice            => $column_params_h,
             FetchHashKeyName => $self->fetch_hash_key_name(),
         },
-        @$bind_params
+        @$bind_values
     ) or die $inv_dbh->errstr;
 
 }
@@ -632,7 +793,7 @@ sub selectall_slice {
 #   {
 #     sql => 'SELECT * FROM table',
 #     column_attr => {Slice => {}},
-#     bind_params => \@bind_params,
+#     bind_values => \@bind_values,
 #   }
 #-------------------------------------------------------------------------------
 sub selectall_arrayref {
@@ -642,19 +803,19 @@ sub selectall_arrayref {
     params!';
     my $sql = $attr->{sql} or croak 'selectall_arrayref() requires SQL.';
     my $column_attr = $attr->{column_attr};
-    my $bind_params = $attr->{bind_params};
+    my $bind_values = $attr->{bind_values};
     my $inv_dbh     = $self->get_inv_dbh();
 
-    ( $column_attr && $bind_params ) && do {
-        return $inv_dbh->selectall_arrayref( $sql, $column_attr, @$bind_params )
+    ( $column_attr && $bind_values ) && do {
+        return $inv_dbh->selectall_arrayref( $sql, $column_attr, @$bind_values )
           or die $DBH::errstr;
     };
     $column_attr && do {
         return $inv_dbh->selectall_arrayref( $sql, $column_attr )
           or die $DBH::errstr;
     };
-    $bind_params && do {
-        return $inv_dbh->selectall_arrayref( $sql, undef, @$bind_params )
+    $bind_values && do {
+        return $inv_dbh->selectall_arrayref( $sql, undef, @$bind_values )
           or die $DBH::errstr;
     };
 
@@ -672,5 +833,102 @@ sub fetchrow_arrayref {
 }
 
 #-------------------------------------------------------------------------------
+
+=head copy_and_rename_file
+  Save File To New Directory. The new directory could be a
+  user image directory with a sub directory for each item.
+  Creates a new Path::Tiny path ($self->destination_filepath_abs) where the (image) file is saved.
+  Returns the new file path string for the (image) new file;
+=cut
+
+#-------------------------------------------------------------------------------
+sub copy_and_rename_file {
+    my $self = shift;
+
+    #--- Rename the image file by PrePending a string (item id) to the
+    #    original filename. Then Copy the uploaded file to the
+    #    correct directory with this New filename
+    #    See  Path::Tiny for details
+    $log->debug( 'Destination dir: ' . $self->destination_base_dir_abs );
+
+    my $dest_path_abs = $self->create_file_type_item_subdir_path();
+
+    #---  Absolute Destination file path with new filename
+    $self->destination_filepath_abs(
+        $dest_path_abs . '/' . $self->new_filename );
+
+    $log->debug( 'New File Path Name: ' . $self->destination_filepath_abs->path );
+
+    #--- Copy the file to this new destination under its new name
+    $self->origin_filepath_abs->copy( $self->destination_filepath_abs->path );
+
+    return $self->destination_filepath_abs->path;
+}
+
+=head2 create_file_type_item_subdir_path
+     Create a subdirectory if not alerady existing, that will be the directory
+     for all files (subdirectories) of a particular item id. (eg images/item_id)
+     It will be a combination of the destination_base_dir_abs and the
+     subdirectory name for the file type and the subdirectory name for the
+     item id.
+     /home/me/app/images/ + 1/
+     Return the Absolute directory path as a Path::Tiny object even if the
+     subdirectory existed already.
+=cut
+
+sub create_file_type_item_subdir_path {
+    my $self = shift;
+    my $sub_dir_name = $self->sub_directory_name() // croak(
+        'create_file_type__item_subdir_path() 
+        requires an item #  sub_directory_name attribute!'
+    );
+
+    my $type_dir_path = $self->create_file_type_subdir_path();
+
+    #--- create a new sub directory to store the image file(if not existing)
+    #    Not mkpath only returns a path if it creates a new one
+    $type_dir_path->child($sub_dir_name)->mkpath;
+    return $type_dir_path->child($sub_dir_name);
+}
+
+=head2 create_file_type_subdir_path
+     Create a subdirectory if not alerady existing, that will be the directory
+     for all files (subdirectories) of a particular type. (eg Images)
+     It will be a combination of the destination_base_dir_abs and the
+     subdirectory name for the file type.
+     /home/me/app/  + images/
+     Return the Absolute directory path as a Path::Tiny object even if the
+     subdirectory existed already.
+=cut
+
+sub create_file_type_subdir_path {
+    my $self                         = shift;
+    my $destination_type_subdir_name = $self->destination_type_subdir_name()
+      // croak(
+        'create_file_type_subdir_path() 
+        requires a destination type subdirectory name attribute!'
+      );
+
+    #--- create a new sub directory to store the image file(if not existing)
+    #    Not mkpath only returns a path if it creates a new one
+    $self->destination_base_dir_abs->child($destination_type_subdir_name)
+      ->mkpath;
+    return $self->destination_base_dir_abs->child(
+        $destination_type_subdir_name);
+}
+
+=head2 item_file_relative_path
+     Returns a string with the  relative path of the stored item file (relative to the
+     App base directory).
+=cut
+
+sub item_file_relative_path {
+    my $self = shift;
+    return $self->destination_filepath_abs->relative(
+        $self->destination_base_dir_abs->path )->path;
+}
+
+#-------------------------------------------------------------------------------
+
 #-------------------------------------------------------------------------------
 1;

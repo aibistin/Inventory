@@ -4,7 +4,7 @@
     <h6 class="panel-title">Add Item To Your Inventory</h6>
  </div>
  <div class="panel-body {% bootstrap_validation_state %}">
-  <form class="form-horizontal" role="form"  action="add_item" method="post"  >
+  <form class="form-horizontal" role="form" enctype="multipart/form-data" action="add_item" method="post"  >
 {% IF not is_valid  %}
    {% FOR err_msg IN error_messages %}
      <p class="text-warning text-center">{% err_msg %}</p>
@@ -13,8 +13,8 @@
 <!-- Item Type Select Group -->
   <div class="row">
   <div class="form-group {% type.bootstrap_validation_state %}">
-     <label for="{% type.name %}" class="col-lg-2 control-label">{% type.label %}</label>
-        <div class="col-lg-2">
+     <label for="{% type.name %}" class="col-sm-2 control-label">{% type.label %}</label>
+        <div class="col-sm-2">
             <select class="form-control input-sm required"
             name="{% type.name %}" id="{% type.name %}" >
             <option 
@@ -33,8 +33,8 @@
 <!-- Location Select Group -->
   <div class="row">
   <div class="form-group {% location.bootstrap_validation_state %}">
-     <label for="{% location.name %}" class="col-lg-2 control-label">{% location.label %}</label>
-        <div class="col-lg-2">
+     <label for="{% location.name %}" class="col-sm-2 control-label">{% location.label %}</label>
+        <div class="col-sm-2">
             <select class="form-control input-sm required"
             name="{% location.name %}" id="{% location.name %}">
             <option 
@@ -53,9 +53,9 @@
 
 <!-- ****  Dimensions Button Collapse -->
  <div class="row"><!-- dimensions row -->
-<button type="button" class="btn btn-link" data-toggle="collapse" data-target="#itemDimensions">
+<button type="button" class="btn btn-link btn-sm" data-toggle="collapse" data-target="#itemDimensions">
    Item Dimensions
-  </button>
+ <span class="glyphicon glyphicon-chevron-down"></span> </button>
 
   <div id="itemDimensions" class="collapse">
 
@@ -63,8 +63,8 @@
   <div class="row">
   <div class="form-group {% lwh_bootstrap_validation_state %}">
     <!-- Length Select Group -->
-        <label for="{% length.name %}" class="col-lg-2 control-label">{% length.label %}</label>
-        <div class="col-lg-1">
+        <label for="{% length.name %}" class="col-sm-2 control-label">{% length.label %}</label>
+        <div class="col-sm-1">
             <select class="form-control input-sm"
              name="{% length.name %}" id="{% length.name %}">
              <option value={%length.default_value%}>{% length.default_select_label %}</option>
@@ -76,8 +76,8 @@
 
 
     <!-- Width Select Group -->
-        <label for="width" class="col-lg-1 control-label">{% width.label %}</label>
-        <div class="col-lg-1">
+        <label for="width" class="col-sm-1 control-label">{% width.label %}</label>
+        <div class="col-sm-1">
             <select class="form-control input-sm"
              name="{% width.name %}" id="{% width.name %}">
              <option value={%width.default_value%}>{% width.default_select_label %}</option>
@@ -88,8 +88,8 @@
         </div>
 
     <!-- Height Select Group -->
-        <label for="{% height.name %}" class="col-lg-1 control-label">{% height.label %}</label>
-        <div class="col-lg-1">
+        <label for="{% height.name %}" class="col-sm-1 control-label">{% height.label %}</label>
+        <div class="col-sm-1">
             <select class="form-control input-sm" 
              name="{% height.name %}" id="{% height.name %}">
              <option value={%height.default_value%}>{% height.default_select_label %}</option>
@@ -105,8 +105,8 @@
 <!-- Diameter Select Group -->
   <div class="row">
     <div class="form-group {% diameter.bootstrap_validation_state %}">
-        <label for="{% diameter.name %}" class="col-lg-2 control-label">{% diameter.label %}</label>
-        <div class="col-lg-2">
+        <label for="{% diameter.name %}" class="col-sm-2 control-label">{% diameter.label %}</label>
+        <div class="col-sm-2">
                     <select class="form-control input-sm" 
                      name="{% diameter.name %}" id="{% diameter.name %}">
                     <option value={%diameter.default_value%}>{% diameter.default_select_label %}</option>
@@ -126,14 +126,14 @@
 
 <!-- ****  Weight Button Collapse -->
    <div class="row">
-   <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#itemWeight">
+   <button type="button" class="btn btn-link btn-sm" data-toggle="collapse" data-target="#itemWeight">
   Item Weight
-  </button>
+  <span class="glyphicon glyphicon-chevron-down"></button>
   <div id="itemWeight" class="collapse">
     <!-- Weight Select Group -->
         <div id="weight" class="form-group {% weight.bootstrap_validation_state %} ">
-            <label for="{% weight.name %}" class="col-lg-2 control-label">{% weight.label %}</label>
-            <div class="col-lg-2">
+            <label for="{% weight.name %}" class="col-sm-2 control-label">{% weight.label %}</label>
+            <div class="col-sm-2">
                 <select class="form-control input-sm" 
                         name="{% weight.name %}" id="{% weight.name %}">
                         <option value={%weight.default_value%}>{% weight.default_select_label %}</option>
@@ -149,9 +149,9 @@
 
 <!-- ****  Desc Button Collapse -->
 <div class="row">
-<button type="button" class="btn btn-link" data-toggle="collapse" data-target="#itemDesc">
+<button type="button" class="btn btn-link btn-sm" data-toggle="collapse" data-target="#itemDesc">
   Item Description
-  </button>
+  <span class="glyphicon glyphicon-chevron-down"></button>
 
   <div id="itemDesc" class="collapse">...</div>
 
@@ -160,21 +160,50 @@
 
 <!-- ****  Photo Button Collapse -->
 <div class="row">
-<button type="button" class="btn btn-link" data-toggle="collapse" data-target="#itemPhoto">
+<button type="button" class="btn btn-link btn-sm" data-toggle="collapse" data-target="#itemPhoto">
   Item Photo
-  </button>
+  <span class="glyphicon glyphicon-chevron-down"></button>
 
-  <div id="itemPhoto" class="collapse">...</div>
+  <div id="itemPhoto" class="collapse">
 
+    <div class="form-group {% photo.bootstrap_validation_state %}">
+      <label for="{% type.name %}" class="col-sm-2 control-label">{% type.label %}</label>
+        <!-- Start Bootstrap Template -->
+        <div class="col-sm-3">
+          <div class="fileinput fileinput-new" data-provides="fileinput">
+            <div class="fileinput-new thumbnail" style="width: 200px; height: 150px;">
+              {% IF photo %}
+                  <img src="http://www.placehold.it/200x150/EFEFEF/AAAAAA&text=no+image" alt="Upload a photo"/>
+              {% ELSE %}
+                  <img src="{% photo %}"  alt="Upload a photo"/>
+              {% END %}
+            </div>
+            <div class="fileinput-preview fileinput-exists thumbnail"
+             style="max-width: 200px; max-height: 150px; line-height: 20px;">
+            </div>
+            <div>
+               <span class="btn btn-info btn-file"><span class="fileinput-new">Select image</span>
+               <span class="fileinput-exists">Change</span>
+               <input type="file"  name="photo"/>
+               </span>
+               <a href="in_photo" class="btn fileinput-exists" data-dismiss="fileinput">Remove</a> 
+                <span class="text-error">{%- upload_error -%}</span>
+            </div> 
+          </div>
+        </div>
+      </div>
+
+  </div> <!-- /collapse -->
 </div><!-- /row -->
 <!-- **** END  Photo Button Collapse -->
-
+<!--  END    PHOTO UPLOAD --> 
 
  </div><!-- /panel-body -->
  
+ 
  <div class="panel-footer">
   <div class="row">
-        <div class="col-lg-6">
+        <div class="col-sm-6">
             <button type="submit" class="btn btn-primary">Add Item</button>
         </div>
   </div> <!-- /row -->
@@ -182,3 +211,4 @@
 
  </div><!-- /panel-footer -->
  </div><!-- /panel -->
+

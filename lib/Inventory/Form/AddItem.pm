@@ -21,6 +21,7 @@ use Moo;
 with( 'Item::Desc', 'Item::Structure' );
 
 use Log::Any qw{$log};
+use Try::Tiny;
 
 #------ Locate my Types Module
 #use FindBin;
@@ -29,10 +30,9 @@ use Log::Any qw{$log};
 #use Cwd qw/realpath/;
 #use lib  realpath( "$FindBin::Bin/../lib");
 
-use MyConstant qw/$PI/;
-use Types::Standard qw{ Bool Enum Int Maybe Num Str };
+use Types::Standard qw{Any Bool Enum Int Maybe Num Object Str };
 use MyTypes
-  qw{ Furniture MeasuringUnit MeasuringSys NegativeInt PI PositiveInt PositiveOrZeroInt ZeroInt };
+  qw{ Furniture  ImageFileName  is_ImageFileName MeasuringUnit MeasuringSys NegativeInt PI PositiveInt PositiveOrZeroInt ZeroInt };
 
 use Carp qw{croak};
 use Data::Dump qw/dump/;
@@ -45,7 +45,7 @@ use MyUtil qw { camelcase_str  full_chomp is_str_alpha  make_str_alpha };
 
 #------ GLOBALS
 use MyConstant
-  qw/$FAIL $NO  $ONE_TO_500 $FIVE_TO_1000 $TEN_TO_10000 $TRUE $PI $YES/;
+  qw/$FAIL $NO $ONE_TO_500 $FIVE_TO_1000  $MAX_IMAGE_SIZE $TEN_TO_10000 $PI $TRUE  $YES/;
 
 #------  Globals
 my $METRIC                     = q/metric/;
@@ -76,6 +76,9 @@ my $DIAMETER_LABEL             = q{Diameter};
 my $WEIGHT                     = q{weight};
 my $WEIGHT_DEFAULT_VALUE       = 0;
 my $WEIGHT_LABEL               = q{Weight};
+my $PHOTO                      = q{photo};
+my $PHOTO_DEFAULT_VALUE        = q{};
+my $PHOTO_LABEL                = q{Include Image};
 my $EXTERNAL_REF               = q{external_ref};
 my $EXTERNAL_REF_DEFAULT_VALUE = undef;
 my $EXTERNAL_REF_LABEL         = q{External Ref};
@@ -84,8 +87,9 @@ my $COMMENTS_DEFAULT_VALUE     = q{};
 my $COMMENTS_LABEL             = q{Additional Info};
 
 my @item_table_cols = (
-    $ID,     $TYPE,     $LOCATION, $LENGTH,       $WIDTH,
-    $HEIGHT, $DIAMETER, $WEIGHT,   $EXTERNAL_REF, $COMMENTS
+    $ID,    $TYPE,         $LOCATION, $LENGTH,
+    $WIDTH, $HEIGHT,       $DIAMETER, $WEIGHT,
+    $PHOTO, $EXTERNAL_REF, $COMMENTS
 );
 
 my $INCHES_LABEL = qw{Inches};
@@ -167,6 +171,15 @@ has weight => (
 #    default => sub { $DEFAULT_UNIT }
 #);
 
+#
+##------ Photo
+has photo => (
+    is => 'ro',
+
+    #    isa    => ImageFileName,
+    isa => Maybe [Object],
+);
+
 #-------------------------------------------------------------------------------
 #  For Form Class
 #-------------------------------------------------------------------------------
@@ -221,6 +234,11 @@ $extract_int_sub = sub {
     my ($int) = $_[0] =~ /(\d+)/;
     $int;
 };
+
+#-------------------------------------------------------------------------------
+#  Validation Subroutine Names
+#-------------------------------------------------------------------------------
+my ($photo_validation_sub);
 
 #-------------------------------------------------------------------------------
 #                      BUILD FORM DATA
@@ -318,7 +336,6 @@ sub BUILD {
                 default_value        => $HEIGHT_DEFAULT_VALUE,
                 valid                => $NO,
                 value_range          => [ 0, 1000 ],
-                message              => 'You need to enter a valid width!',
                 message              => 'You need to enter a valid height!',
             },
             diameter => {
@@ -345,6 +362,15 @@ sub BUILD {
                 value_range          => [ 0, 10000 ],
                 message              => 'You need to enter a valid weight!',
             },
+            photo => {
+                label          => $PHOTO_LABEL,
+                name           => $PHOTO,
+                required       => $YES,
+                default_value  => $PHOTO_DEFAULT_VALUE,
+                valid          => $NO,
+                validation_sub => $photo_validation_sub,
+                message        => 'You need to enter a valid Photo!',
+            },
         }
     );
 
@@ -363,8 +389,8 @@ sub BUILD {
 =cut
 
 sub create_form_template {
-    my $self      = shift;
-    my $form_data = $self->form_data();
+    my $self                            = shift;
+    my $form_data                       = $self->form_data();
     my $form_bootstrap_validation_state = q{};
 
     my @error_messages;
@@ -386,9 +412,10 @@ sub create_form_template {
     }
     return {
         bootstrap_validation_state => $form_bootstrap_validation_state,
+
         #--- Function CallBack
         camelcase_str  => sub { camelcase_str(@_) },
-        is_valid      => $self->is_valid(), 
+        is_valid       => $self->is_valid(),
         error_messages => \@error_messages,
         %$form_data
     };
@@ -407,7 +434,7 @@ sub create_form_template {
 sub get_form_field_values {
     my $self = shift;
     my %fields = map { $_ => $self->{$_} }
-      (qw {type location height width length diameter weight});
+      (qw {type location height width length diameter weight photo});
     return \%fields;
 }
 
@@ -427,11 +454,11 @@ sub validate {
     #    $self->validate_height();
     #    $self->validate_diameter();
     #    $self->validate_weight();
+    #    $self->validate_photo();
 
   VALIDATION_LOOP:
     for my $item_v ( keys(%$form_data) ) {
 
-        #        my $input_value = $form_data->{$item_v}{value};
         my $input_value = $self->$item_v();
         $log->debug( "Testing $item_v with value : "
               . ( $input_value // q{undefined} ) );
@@ -448,6 +475,28 @@ sub validate {
           && do {
             $form_data->{$item_v}{valid} = $NO;
             $self->_set_is_valid($NO);
+            $log->debug('INVALID: Input value not defined!!!');
+            next VALIDATION_LOOP;
+          };
+
+        #------ Defined field, and the field has a validation subroutine.
+        ( ($input_value) && ( defined $form_data->{$item_v}{validation_sub} ) )
+          && do {
+            my $field_validation_sub = $form_data->{$item_v}{validation_sub};
+
+            #----- Validation Sub returns (yes/no,  $message/undef)
+            my ( $field_is_valid, $message ) =
+              $field_validation_sub->($input_value);
+            $log->debug( 'Validation subroutine got this rc: '
+                  . ( $field_is_valid // '<invalid rc, fix it>' )
+                  . ' and this message : '
+                  . ( $message // '<no message,  all must be good>' )
+                  . ' !' );
+            $form_data->{$item_v}{valid} = $field_is_valid;
+
+            #--- Will only have a message if the field is invalid
+            $form_data->{$item_v}{message} = $message if ($message);
+            $self->_set_is_valid($field_is_valid);
             $log->debug('INVALID: Input value not defined!!!');
             next VALIDATION_LOOP;
           };
@@ -509,14 +558,69 @@ sub validate {
 
 }
 
-=head2 validate_type
+#-------------------------------------------------------------------------------
+#  Individual Field Validation
+#-------------------------------------------------------------------------------
 
+=head2 photo_validation_sub 
+  Validate the file type by first checking the file suffix,
+  then validating the file type with File::LibMagic
+  Also checks that the file is smaller than the maximum allowed 
+  size from the config file.
+  File Should be in Dancer2::Core::Request::Upload Object format.
+  It has methods basename,  size and tempname that are used in the 
+  validation.
+  Returns (YES/NO, undef/MESSAGE). Only returns a message if the Image file is
+  Invalid
+
+  (gif|png|jpe?g);
 =cut
 
-#sub validate_type{
-#return $FAIL unless $self->type();
-#
-#};
+$photo_validation_sub = sub {
+    return unless $_[0];
+    my $upload_file_obj               = shift;
+    my $file_magic_image_file_type_rx = qr{image/(jpeg|gif|png)};
+    my $message;
+
+    $log->debug( 'Validating this file : ' . $upload_file_obj->basename );
+    $log->debug( 'With this size: ' . $upload_file_obj->size );
+    if ( not is_ImageFileName( lc( $upload_file_obj->basename ) ) ) {
+        $message = 'File must be of type gif,  png,  jpg, jpeg';
+        return ( $NO, $message );
+    }
+
+    if ( $upload_file_obj->size > $MAX_IMAGE_SIZE ) {
+        $message =
+          'File must be less than ' . $upload_file_obj->size . ' bytes!';
+        return ( $NO, $message );
+    }
+
+    #------ Use File magic to validate the file if it is available.
+    #-------If it is not available,  will have to accept that the file
+    #       is really an image
+    my $FileMagic = try {
+        require File::LibMagic;
+        File::LibMagic->new();
+    }
+    catch {
+        $log->error( "Unable to Load File::LibeMagic because: \n"
+              . ( $_ // '<no error message>' ) );
+        return $FAIL;
+    };
+
+    #--- Assume File is a valid image as advertised
+    return ( $YES, undef ) unless $FileMagic;
+
+    #--- Final check with File::LibMagic
+    if ( $FileMagic->checktype_filename( $upload_file_obj->tempname ) =~
+        /$file_magic_image_file_type_rx/ )
+    {
+        return ( $YES, undef );
+    }
+    $log->debug( 'File magic said this image file is : '
+          . $FileMagic->checktype_filename( $upload_file_obj->tempname ) );
+    return ( $NO, q{This is not an image file!} );
+};
 
 #------------------------------------------------------------------------------
 1;

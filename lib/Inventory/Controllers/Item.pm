@@ -16,6 +16,7 @@
 #===============================================================================
 package Inventory::Controllers::Item;
 use Dancer2;
+use Dancer2::FileUtils qw{dirname path path_or_empty};
 
 #------ PREFIX for this route.
 my $PREFIX = q{/item};
@@ -24,6 +25,7 @@ prefix $PREFIX;
 use Template;
 use Data::Dump qw/dump/;
 use List::Util qw{first};
+use Path::Tiny;
 
 #---- Caching
 
@@ -34,9 +36,13 @@ use Dancer2::Plugin::Cache::CHI;
 #------ Locate my Databse Modules
 use FindBin;
 my $run_dir       = $FindBin::Bin;
-my $INVENTORY_DB  = "$run_dir/../sql/inventory.db";
+my $BASE_DIR      = path("$run_dir/..");
+my $INVENTORY_DB  = path("$BASE_DIR/sql/inventory.db");
+my $IMAGES_DIR    = "item_images";
 my $ITEM_CATEGORY = qw{Furniture};
 
+#-----The directory for storing the image sould be buildable
+#     Base uri + images + ( user) + itemid
 #------ Inventory Db Item Module
 use Inventory::Db::Item;
 use Inventory::Form::AddItem;
@@ -82,6 +88,9 @@ my $DIAMETER_LABEL             = q{Diameter};
 my $WEIGHT                     = q{weight};
 my $WEIGHT_DEFAULT_VALUE       = 0;
 my $WEIGHT_LABEL               = q{Weight};
+my $PHOTO                      = q{photo};
+my $PHOTO_DEFAULT_VALUE        = q{};
+my $PHOTO_LABEL                = q{Include Image};
 my $EXTERNAL_REF               = q{external_ref};
 my $EXTERNAL_REF_DEFAULT_VALUE = undef;
 my $EXTERNAL_REF_LABEL         = q{External Ref};
@@ -90,8 +99,9 @@ my $COMMENTS_DEFAULT_VALUE     = q{};
 my $COMMENTS_LABEL             = q{Additional Info};
 
 my @item_table_cols = (
-    $ID,     $TYPE,     $LOCATION, $LENGTH,       $WIDTH,
-    $HEIGHT, $DIAMETER, $WEIGHT,   $EXTERNAL_REF, $COMMENTS
+    $ID,    $TYPE,         $LOCATION, $LENGTH,
+    $WIDTH, $HEIGHT,       $DIAMETER, $WEIGHT,
+    $PHOTO, $EXTERNAL_REF, $COMMENTS
 );
 
 my $INCHES_LABEL = qw{Inches};
@@ -103,27 +113,13 @@ my $ADD_ITEM_SUCCESS_T = q/add_item_success/;
 my $VIEW_ITEMS_T       = q/view_items/;
 
 #-------------------------------------------------------------------------------
-#  Before Hook
+# Some Template Toolkit Housekeeping 
 #-------------------------------------------------------------------------------
-hook before => sub {
-
-    # use vars->{'time'} to access
-    #    or var 'time';
-    var time => scalar(localtime);
+hook before_template_render => sub {
+        my $tokens = shift;
+        #--- set the base path for template toolkit
+#         $tokens->{uri_base} = request->base->path;
 };
-
-#-------------------------------------------------------------------------------
-get '/' => sub {
-    template 'welcome';
-};
-
-#-------------------------------------------------------------------------------
-#  Welcome Page
-#-------------------------------------------------------------------------------
-#get '/welcome' => sub {
-#    template 'welcome';
-#};
-
 #-------------------------------------------------------------------------------
 #  View Items
 #-------------------------------------------------------------------------------
@@ -139,11 +135,16 @@ get '/view_items' => sub {
     my $DbItem = Inventory::Db::Item->new( db_name => $INVENTORY_DB );
 
     my $items = $DbItem->select_all_items_detail();
-
     #    debug("Got All Items : " . dump $items);
+   my $select_one_item_photo = sub {
+        my $photos = $DbItem->select_item_photo(@_);
+        return $photos->[0]{rel_location};
+
+   };
 
     my %template_vars = (
         item_list                  => $items,
+        one_photo                 => sub { $select_one_item_photo->(@_)}, 
         camelcase_str              => sub { camelcase_str(@_) },
         format_yyyy_mm_dd_T_hhmmss => sub { format_yyyy_mm_dd_T_hhmmss(@_) },
         print_time                 => vars->{'time'}
@@ -196,35 +197,62 @@ post '/add_item' => sub {
             height   => params->{$HEIGHT},
             diameter => params->{$DIAMETER},
             weight   => params->{$WEIGHT},
+            photo    => upload($PHOTO),
         }
     );
 
     #----- Print success page
     if ( $AdForm->is_valid() ) {
         my $new_item_h = insert_item_to_database($AdForm);
-        debug( 'Returned from Insert item with new Item : ' . dump $new_item_h );
+        debug(
+            'Returned from Insert item with new Item : ' . dump $new_item_h );
 
         #todo Create Error if fail
         #select last added and show in success page
-        my $form_data = $AdForm->form_data();
+        #        my $form_data = $AdForm->form_data();
         template $ADD_ITEM_SUCCESS_T,
           {
-            new_item                  => $new_item_h,
-            bootstrap_validation_state => 'has-success', 
-        camelcase_str              => sub { camelcase_str(@_) },
-        format_yyyy_mm_dd_T_hhmmss => sub { format_yyyy_mm_dd_T_hhmmss(@_) },
-        add_item_route             => $PREFIX . q{/add_item}, 
+            new_item                   => $new_item_h,
+            bootstrap_validation_state => 'has-success',
+            camelcase_str              => sub { camelcase_str(@_) },
+            format_yyyy_mm_dd_T_hhmmss =>
+              sub { format_yyyy_mm_dd_T_hhmmss(@_) },
+            add_item_route => $PREFIX . q{/add_item},
           };
     }
     else {
-    #----- or Render the form with the errors
+        #----- or Render the form with the errors
         debug('Form had some errors,  and is being resubmitted!');
         my $template_vars_h = $AdForm->create_form_template();
-        my $template_vars_h->{return_route} =  
-        template $ADD_ITEM_T, $template_vars_h;
+        $template_vars_h->{return_route} = template $ADD_ITEM_T,
+          $template_vars_h;
     }
 };
 
+#-------------------------------------------------------------------------------
+#                    U S E R      S T U F F
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+#                   C U S T O M E R    S T U F F
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+#  Insert To Items
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+#          };
+#    }
+#    else {
+#        #----- or Render the form with the errors
+#        debug('Form had some errors,  and is being resubmitted!');
+#        my $template_vars_h = $AdForm->create_form_template();
+#        $template_vars_h->{return_route} = template $ADD_ITEM_T,
+#          $template_vars_h;
+#    }
+#};
+#
 #-------------------------------------------------------------------------------
 #                    U S E R      S T U F F
 #-------------------------------------------------------------------------------
@@ -257,6 +285,7 @@ sub validate_add_item_form {
             height    => $params->{height},
             diameter  => $params->{diameter},
             weight    => $params->{weight},
+            photo     => $params->{photo},
             types     => $types,
             locations => $locations,
             submitted => $YES,
@@ -264,7 +293,8 @@ sub validate_add_item_form {
     );
 
     $AdForm->validate();
-    debug( 'Form validation status is : ' . $AdForm->is_valid() );
+    debug( 'Form validation status is : '
+          . ( $AdForm->is_valid() // '<fix this too>' ) );
     return ($AdForm);
 }
 
@@ -296,13 +326,23 @@ sub get_locations {
 sub insert_item_to_database {
     my $AdForm = shift;
 
-    my $DbItem = Inventory::Db::Item->new( db_name => $INVENTORY_DB );
-    my $item_form_field_h = $AdForm->get_form_field_values();
-    debug('Returned Form field values: ' . dump($item_form_field_h));
+    #--- Save(temporarily) the uploaded file with its original name
+    my $photo_obj = $AdForm->photo();
 
-    my $new_item_id = $DbItem->insert_item_transaction( $item_form_field_h );
-    my $new_item_h = $DbItem->select_one_item_detail($new_item_id) if
-    $new_item_id;
+    my $DbItem = Inventory::Db::Item->new(
+        db_name                      => $INVENTORY_DB,
+        origin_filepath_abs          => path( $photo_obj->tempname ),
+        destination_base_dir_abs     => $BASE_DIR,
+        destination_type_subdir_name => $IMAGES_DIR,
+        new_filename                 => $photo_obj->filename,
+        dummy_path                   => path( $BASE_DIR . '/' . 'DUMMIES_DOH' ),
+    );
+
+    #--- Insert the new item, then return the new item entry.
+    #----Get the corresponding photos for this item
+    my $new_item_h =
+      $DbItem->insert_and_return_item_details(
+        $AdForm->get_form_field_values() );
 
     #--- Insert already committed
     $DbItem->safe_disconnect();

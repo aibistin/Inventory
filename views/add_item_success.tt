@@ -27,6 +27,15 @@
             
         <dt>Weight</dt> 
           <dd>{% new_item.weight %} </dd>
+          
+        <dt>Photos</dt> 
+            {% FOR photo_record IN new_item.photos %}
+                <dd> 
+                   <img  src="{% photo_record.rel_location %}"
+                   class="img-responsive img-thumbnail"  alt="No photo uploaded" >
+                </dd>
+          {% END %}
+
         <dt>External Ref</dt> 
           <dd>{% new_item.external_ref %} </dd>
         <dt>Comments</dt> 

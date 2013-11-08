@@ -37,6 +37,9 @@
           <th>
               Updated
           </th>
+          <th>
+              Photo
+          </th>
         </thead>
         <tbody>
         {% DEBUG on %}
@@ -74,6 +77,9 @@
                 </td>
                 <td>
                 {% format_yyyy_mm_dd_T_hhmmss(item.updated) %}
+                </td>
+                <td class="text-center">
+                <img src="{% one_photo(item.id)%}" alt="No Photo Available" class="img-responsive img-thumbnail">
                 </td>
             </tr>
             {% END %}
