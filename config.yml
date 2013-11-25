@@ -23,6 +23,10 @@ serializer: JSON
 
 template: "template_toolkit"
 
+#------ Handle Session
+# session: "YAML"
+session: Cookie
+
 engines:
   template:
     template_toolkit:
@@ -33,7 +37,34 @@ engines:
     convert_blessed: 1
     allow_nonref: 1
     utf8: 1
+  session:
+    Cookie:
+      secret_key: get thee hence to yonder cookie factory
+# 604800 = 7 days
+      default_duration: 604800
+#  session:
+#    YAML:
+#      session_dir: "/tmp/app/inventory/sessions/"#lugins:
+
+
+
 plugins:
     'Cache::CHI':
       driver: Memory
       global: 1
+
+    Database:
+        driver: 'SQLite'
+        database: 'db/user.db'
+#        host: 'localhost'
+#        port: 3306
+        username: ''
+        password: ''
+        connection_check_threshold: 10
+        dbi_params:
+            RaiseError: 1
+            AutoCommit: 1
+#        on_connect_do: ["SET NAMES 'utf8'",  "SET CHARACTER SET 'utf8'" ]
+        log_queries: 1
+#        handle_class: 'User::DB::Handle' 
+

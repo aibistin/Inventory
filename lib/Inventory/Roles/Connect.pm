@@ -32,7 +32,7 @@ my $DEFAULT_DB_NAME = "$run_dir/../sql/inventory.db";
 
 =head2 db_connect
    Set:
-   Connect to (Inventory) Database. Return the Database Handle.
+   Connect to Database. Return the Database Handle.
    Get:
    If there is an existing connection to the Database, then just return that
    Database Handle.
@@ -55,12 +55,15 @@ sub db_connect {
     };
 
     no warnings 'once';
-    my $inv_dbh = DBI->connect(
+    my $dbh = DBI->connect(
         "dbi:SQLite:dbname=" . ( $self->db_name || $DEFAULT_DB_NAME ),
         "",    # no username required
         "",    # no password required
+#        $self->username() // q{},    # no username required
+#        $self->password() // q{},    # no password required
         $connect_attr
     ) or die $DBH::errstr;
 
+    return $dbh;
 }
 

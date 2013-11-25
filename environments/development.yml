@@ -29,3 +29,8 @@ auto_reload: 0
 
 # print the banner
 startup_info: 1
+
+crypt_params:
+  password:
+    salt_len: 10
+    output_len: 30

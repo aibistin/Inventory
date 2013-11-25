@@ -2,9 +2,10 @@
 package Inventory;
 use Dancer2;
 our $VERSION = '0.1';
-#-------Controllers
-use Inventory::Controllers::Index;
-use Inventory::Controllers::Item;
+#-------Controller
+use Inventory::Controller::Index;
+use Inventory::Controller::Item;
+use User::Controller::User;
  
 
 #-------End Main Module

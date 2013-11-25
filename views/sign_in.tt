@@ -1,0 +1,62 @@
+<br><br>
+<div class="panel panel-primary">
+ <div class="panel-heading">
+    <h6 class="panel-title">Sign In To Access Your Inventory</h6>
+ </div>
+ <div class="panel-body {% bootstrap_validation_state %}">
+  <form class="form-horizontal" role="form" action="sign_in" method="post"  >
+{% IF not is_valid  %}
+   {% FOR err_msg IN error_messages %}
+     <p class="text-warning text-center">{% err_msg %}</p>
+   {% END %}
+{% END %}
+<!-- User Name = email-->
+  <div class="row">
+    <div class="form-group {% username.bootstrap_validation_state %}">
+      <label for="{% username.name %}" class="col-sm-2 control-label">Email Address:</label>
+        <div class="col-sm-2">
+           <input type="email" class="form-control input-sm required"
+                name="{% username.name %}" id="{% username.name %}" placeholder="Email Address"
+                value="{% username.value %}" autofocus="autofocus" >
+        </div>
+    </div>
+  </div> <!-- /row -->
+
+
+<!-- password -->
+  <div class="row">
+  <div class="form-group {% password.bootstrap_validation_state %}">
+     <label for="{% password.name %}" class="col-sm-2 control-label">Password:</label>
+        <div class="col-sm-2">
+           <input type="password" class="form-control input-sm required"
+                name="{% password.name %}" id="{% password.name %}" placeholder="Password" >
+        </div>
+  </div>
+  </div> <!-- /row -->
+
+
+<!-- remember me -->
+  <div class="row">
+        <div class="checkbox">
+            <label class="col-sm-2 col-sm-offset-2 control-label"> 
+              <input type="checkbox" name="{% remember_me.name %}" id="{%
+              remember_me.name %}" >Remember Me</label>
+        </div>
+  </div> <!-- /row -->
+
+<!-- Where were we going before this -->
+<input type='hidden' name="saved_path" value="{% saved_path %}">
+
+ 
+ </div><!-- /panel-body -->
+ <div class="panel-footer">
+  <div class="row">
+        <div class="col-sm-2 col-sm-offest-2 ">
+            <button type="submit" class="btn btn-primary">Sign In</button>
+        </div>
+  </div> <!-- /row -->
+</form>
+
+ </div><!-- /panel-footer -->
+ </div><!-- /panel -->
+
